@@ -103,7 +103,7 @@ mvn clean compile -DskipTests
 cd campus-server && mvn spring-boot:run
 
 # 5. 访问 API 文档
-# http://localhost:8080/doc.html
+# http://localhost:8080/api/doc.html
 ```
 
 ## 7. 构建部署

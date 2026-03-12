@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Swagger/Knife4j API 文档配置
- * 访问地址：http://localhost:8080/doc.html
+ * 访问地址：http://localhost:8080/api/doc.html
  */
 @Configuration
 public class SwaggerConfig {
