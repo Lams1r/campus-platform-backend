@@ -8,27 +8,27 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Sa-Token 全局路由拦截器配置
- * 白名单放行 + 全局 Token 校验
+ * Sa-Token 路由拦截器配置
+ * 统一鉴权入口：白名单路径放行，其余全部登录校验
  */
 @Configuration
 public class SaTokenConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // 注册 Sa-Token 拦截器
         registry.addInterceptor(new SaInterceptor(handle -> {
-            // 拦截所有路由
+            // 全局登录校验（排除白名单）
             SaRouter.match("/**")
-                    // 白名单放行
                     .notMatch(
-                            "/auth/login",
+                            // 认证模块（验证码、登录）
                             "/auth/captcha",
-                            "/auth/logout",
+                            "/auth/login",
+                            // Swagger / Knife4j 文档
                             "/doc.html",
                             "/webjars/**",
                             "/swagger-resources/**",
                             "/v3/api-docs/**",
+                            // 静态资源
                             "/favicon.ico",
                             "/error"
                     )
