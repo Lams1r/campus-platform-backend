@@ -1,9 +1,7 @@
 package com.campus.system.modules.svc.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.IdUtil;
-import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.campus.system.annotation.LogRecord;
@@ -12,6 +10,7 @@ import com.campus.system.common.api.Result;
 import com.campus.system.common.exception.BusinessException;
 import com.campus.system.modules.svc.entity.CampusRepairOrder;
 import com.campus.system.modules.svc.service.ICampusRepairOrderService;
+import com.campus.system.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,7 +27,6 @@ public class CampusRepairController {
 
     private final ICampusRepairOrderService repairService;
 
-    /** 分页查询工单 */
     @GetMapping("/page")
     @SaCheckPermission("svc:repair:list")
     public Result<PageResult<CampusRepairOrder>> page(
@@ -46,12 +44,11 @@ public class CampusRepairController {
         return Result.success(new PageResult<>(page.getTotal(), page.getRecords(), (long) pageNum, (long) pageSize));
     }
 
-    /** 我的报修列表 */
     @GetMapping("/my")
     public Result<PageResult<CampusRepairOrder>> myOrders(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        Long userId = StpUtil.getLoginIdAsLong();
+        Long userId = SecurityUtils.getCurrentUserId();
         Page<CampusRepairOrder> page = repairService.page(new Page<>(pageNum, pageSize),
                 new LambdaQueryWrapper<CampusRepairOrder>()
                         .eq(CampusRepairOrder::getApplicantId, userId)
@@ -60,18 +57,16 @@ public class CampusRepairController {
         return Result.success(new PageResult<>(page.getTotal(), page.getRecords(), (long) pageNum, (long) pageSize));
     }
 
-    /** 提交报修 */
     @PostMapping
     public Result<Void> submit(@RequestBody CampusRepairOrder order) {
-        order.setApplicantId(StpUtil.getLoginIdAsLong());
+        order.setApplicantId(SecurityUtils.getCurrentUserId());
         order.setOrderNo("RP" + IdUtil.getSnowflakeNextIdStr());
-        order.setStatus(0); // 待处理
+        order.setStatus(0);
         if (order.getUrgencyLevel() == null) order.setUrgencyLevel(0);
         repairService.save(order);
         return Result.success();
     }
 
-    /** 受理工单（分配处理人） */
     @PutMapping("/{id}/accept")
     @SaCheckPermission("svc:repair:handle")
     @LogRecord(module = "报修管理", type = "受理")
@@ -86,7 +81,6 @@ public class CampusRepairController {
         return Result.success();
     }
 
-    /** 完成维修 */
     @PutMapping("/{id}/finish")
     @SaCheckPermission("svc:repair:handle")
     @LogRecord(module = "报修管理", type = "完成")
@@ -101,7 +95,6 @@ public class CampusRepairController {
         return Result.success();
     }
 
-    /** 报修人验收评分 */
     @PutMapping("/{id}/verify")
     public Result<Void> verify(@PathVariable Long id,
                                @RequestParam Integer score,
@@ -111,8 +104,13 @@ public class CampusRepairController {
         if (order.getStatus() != 2) throw new BusinessException("工单未完成，不可验收");
         if (score < 1 || score > 5) throw new BusinessException("满意度评分需在1-5之间");
 
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        if (!currentUserId.equals(order.getApplicantId()) && !SecurityUtils.hasRole("admin")) {
+            throw new BusinessException("仅报修申请人或管理员可执行验收");
+        }
+
         order.setStatus(3);
-        order.setVerifyUserId(StpUtil.getLoginIdAsLong());
+        order.setVerifyUserId(currentUserId);
         order.setVerifyTime(LocalDateTime.now());
         order.setVerifyScore(score);
         order.setVerifyRemark(remark);

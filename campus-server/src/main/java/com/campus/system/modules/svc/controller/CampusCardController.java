@@ -1,7 +1,6 @@
 package com.campus.system.modules.svc.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.campus.system.annotation.LogRecord;
@@ -12,6 +11,7 @@ import com.campus.system.modules.svc.entity.CampusCardLoss;
 import com.campus.system.modules.svc.entity.CampusCardRecord;
 import com.campus.system.modules.svc.service.ICampusCardLossService;
 import com.campus.system.modules.svc.service.ICampusCardRecordService;
+import com.campus.system.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,7 +35,7 @@ public class CampusCardController {
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "20") Integer pageSize,
             @RequestParam(required = false) Integer transactionType) {
-        Long studentId = StpUtil.getLoginIdAsLong();
+        Long studentId = SecurityUtils.getCurrentUserId();
         LambdaQueryWrapper<CampusCardRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CampusCardRecord::getStudentId, studentId);
         if (transactionType != null) wrapper.eq(CampusCardRecord::getTransactionType, transactionType);
@@ -64,10 +64,9 @@ public class CampusCardController {
     @SaCheckPermission("svc:card:recharge")
     @LogRecord(module = "校园卡", type = "充值")
     public Result<Void> recharge(@RequestParam Long studentId, @RequestParam String cardNo,
-                                  @RequestParam BigDecimal amount) {
+                                 @RequestParam BigDecimal amount) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) throw new BusinessException("充值金额必须大于0");
 
-        // 查最新余额
         CampusCardRecord last = cardRecordService.getOne(
                 new LambdaQueryWrapper<CampusCardRecord>()
                         .eq(CampusCardRecord::getStudentId, studentId)
@@ -79,7 +78,7 @@ public class CampusCardController {
         CampusCardRecord record = new CampusCardRecord();
         record.setStudentId(studentId);
         record.setCardNo(cardNo);
-        record.setTransactionType(1); // 充值
+        record.setTransactionType(1);
         record.setAmount(amount);
         record.setBalance(balance.add(amount));
         record.setLocation("管理员充值");
@@ -91,11 +90,20 @@ public class CampusCardController {
     /** 挂失校园卡 */
     @PostMapping("/loss/report")
     public Result<Void> reportLoss(@RequestParam String cardNo) {
-        Long studentId = StpUtil.getLoginIdAsLong();
+        Long studentId = SecurityUtils.getCurrentUserId();
+        long activeLossCount = cardLossService.count(new LambdaQueryWrapper<CampusCardLoss>()
+                .eq(CampusCardLoss::getStudentId, studentId)
+                .eq(CampusCardLoss::getCardNo, cardNo)
+                .eq(CampusCardLoss::getStatus, 0));
+        if (activeLossCount > 0) {
+            throw new BusinessException("该校园卡已处于挂失状态");
+        }
+
         CampusCardLoss loss = new CampusCardLoss();
         loss.setStudentId(studentId);
         loss.setCardNo(cardNo);
-        loss.setStatus(0); // 已挂失
+        loss.setStatus(0);
+        loss.setLossTime(LocalDateTime.now());
         cardLossService.save(loss);
         return Result.success();
     }
@@ -106,7 +114,9 @@ public class CampusCardController {
     public Result<Void> unlockLoss(@PathVariable Long id) {
         CampusCardLoss loss = cardLossService.getById(id);
         if (loss == null) throw new BusinessException("挂失记录不存在");
-        loss.setStatus(1); // 已解挂
+        if (!Integer.valueOf(0).equals(loss.getStatus())) throw new BusinessException("该挂失记录不可解挂");
+        loss.setStatus(1);
+        loss.setUnlockTime(LocalDateTime.now());
         cardLossService.updateById(loss);
         return Result.success();
     }

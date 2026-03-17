@@ -1,9 +1,7 @@
 package com.campus.system.modules.svc.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.campus.system.annotation.LogRecord;
 import com.campus.system.common.api.Result;
 import com.campus.system.common.exception.BusinessException;
@@ -30,8 +28,6 @@ public class CampusDormController {
     private final ICampusDormitoryBuildingService buildingService;
     private final ICampusDormitoryRoomService roomService;
     private final ICampusDormitoryAllocationService allocationService;
-
-    // ============ 楼栋 ============
 
     @GetMapping("/building/list")
     @SaCheckPermission("svc:dorm:list")
@@ -61,8 +57,6 @@ public class CampusDormController {
         return Result.success();
     }
 
-    // ============ 房间 ============
-
     @GetMapping("/room/list")
     @SaCheckPermission("svc:dorm:list")
     public Result<List<CampusDormitoryRoom>> roomList(
@@ -91,8 +85,6 @@ public class CampusDormController {
         return Result.success();
     }
 
-    // ============ 入住分配 ============
-
     @GetMapping("/allocation/list")
     @SaCheckPermission("svc:dorm:list")
     public Result<List<CampusDormitoryAllocation>> allocationList(@RequestParam Long roomId) {
@@ -101,7 +93,6 @@ public class CampusDormController {
         ));
     }
 
-    /** 分配入住（自动更新房间已用床位数） */
     @PostMapping("/allocation")
     @SaCheckPermission("svc:dorm:edit")
     @LogRecord(module = "宿舍管理", type = "入住分配")
@@ -110,18 +101,35 @@ public class CampusDormController {
         CampusDormitoryRoom room = roomService.getById(allocation.getRoomId());
         if (room == null) throw new BusinessException("房间不存在");
         if (room.getUsedCount() >= room.getBedCount()) throw new BusinessException("该房间已满员");
+        if (Integer.valueOf(2).equals(room.getStatus())) throw new BusinessException("该房间正在维修，暂不可分配");
+        if (allocation.getBedNumber() == null || allocation.getBedNumber() < 1 || allocation.getBedNumber() > room.getBedCount()) {
+            throw new BusinessException("床位号不合法");
+        }
+
+        long studentActiveAllocation = allocationService.count(new LambdaQueryWrapper<CampusDormitoryAllocation>()
+                .eq(CampusDormitoryAllocation::getStudentId, allocation.getStudentId())
+                .eq(CampusDormitoryAllocation::getStatus, 0));
+        if (studentActiveAllocation > 0) {
+            throw new BusinessException("该学生已有在住床位，不可重复分配");
+        }
+
+        long occupiedBedCount = allocationService.count(new LambdaQueryWrapper<CampusDormitoryAllocation>()
+                .eq(CampusDormitoryAllocation::getRoomId, allocation.getRoomId())
+                .eq(CampusDormitoryAllocation::getBedNumber, allocation.getBedNumber())
+                .eq(CampusDormitoryAllocation::getStatus, 0));
+        if (occupiedBedCount > 0) {
+            throw new BusinessException("该床位已被占用");
+        }
 
         allocation.setStatus(0);
         allocationService.save(allocation);
 
-        // 更新已入住数
         room.setUsedCount(room.getUsedCount() + 1);
-        if (room.getUsedCount().equals(room.getBedCount())) room.setStatus(1); // 满员
+        if (room.getUsedCount().equals(room.getBedCount())) room.setStatus(1);
         roomService.updateById(room);
         return Result.success();
     }
 
-    /** 退宿（自动释放床位） */
     @DeleteMapping("/allocation/{id}")
     @SaCheckPermission("svc:dorm:edit")
     @LogRecord(module = "宿舍管理", type = "退宿")
@@ -135,7 +143,7 @@ public class CampusDormController {
         CampusDormitoryRoom room = roomService.getById(allocation.getRoomId());
         if (room != null && room.getUsedCount() > 0) {
             room.setUsedCount(room.getUsedCount() - 1);
-            room.setStatus(0); // 有空位
+            room.setStatus(0);
             roomService.updateById(room);
         }
         return Result.success();
