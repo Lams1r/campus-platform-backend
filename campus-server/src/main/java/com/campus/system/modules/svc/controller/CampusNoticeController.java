@@ -1,7 +1,6 @@
 package com.campus.system.modules.svc.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -13,10 +12,17 @@ import com.campus.system.modules.svc.entity.CampusNotice;
 import com.campus.system.modules.svc.entity.CampusNoticeRead;
 import com.campus.system.modules.svc.service.ICampusNoticeReadService;
 import com.campus.system.modules.svc.service.ICampusNoticeService;
+import com.campus.system.modules.sys.entity.SysUser;
+import com.campus.system.modules.sys.service.ISysUserService;
+import com.campus.system.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 通知公告控制器
@@ -29,7 +35,9 @@ public class CampusNoticeController {
     private final ICampusNoticeService noticeService;
     private final ICampusNoticeReadService noticeReadService;
 
-    /** 分页查询公告（已发布） */
+    @Autowired(required = false)
+    private ISysUserService userService;
+
     @GetMapping("/page")
     public Result<PageResult<CampusNotice>> page(
             @RequestParam(defaultValue = "1") Integer pageNum,
@@ -38,24 +46,41 @@ public class CampusNoticeController {
             @RequestParam(required = false) Integer noticeType) {
 
         LambdaQueryWrapper<CampusNotice> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CampusNotice::getStatus, 1); // 仅已发布
+        wrapper.eq(CampusNotice::getStatus, 1);
         if (StrUtil.isNotBlank(keyword)) wrapper.like(CampusNotice::getTitle, keyword);
         if (noticeType != null) wrapper.eq(CampusNotice::getNoticeType, noticeType);
+        if (!SecurityUtils.hasRole("admin")) {
+            List<String> roleKeys = resolveCurrentRoleKeys();
+            String className = getCurrentClassName();
+            wrapper.and(w -> {
+                w.eq(CampusNotice::getNoticeType, 0);
+                if (!roleKeys.isEmpty()) {
+                    w.or(q -> q.eq(CampusNotice::getNoticeType, 1).in(CampusNotice::getTargetRole, roleKeys));
+                }
+                if (StrUtil.isNotBlank(className)) {
+                    w.or(q -> q.eq(CampusNotice::getNoticeType, 2).eq(CampusNotice::getTargetClass, className));
+                }
+            });
+        }
         wrapper.orderByDesc(CampusNotice::getPublishTime);
 
         Page<CampusNotice> page = noticeService.page(new Page<>(pageNum, pageSize), wrapper);
-        return Result.success(new PageResult<>(page.getTotal(), page.getRecords(), (long) pageNum, (long) pageSize));
+        List<CampusNotice> visibleRecords = page.getRecords().stream()
+                .filter(this::canCurrentUserView)
+                .collect(Collectors.toList());
+        return Result.success(new PageResult<>(page.getTotal(), visibleRecords, (long) pageNum, (long) pageSize));
     }
 
-    /** 公告详情 + 自动标记已读 */
     @GetMapping("/{id}")
     public Result<CampusNotice> detail(@PathVariable Long id) {
         CampusNotice notice = noticeService.getById(id);
-        if (notice == null) throw new BusinessException("公告不存在");
+        if (notice == null || !canCurrentUserView(notice)) {
+            throw new BusinessException("公告不存在或无权查看");
+        }
 
         // 登录用户自动标记已读
         try {
-            Long userId = StpUtil.getLoginIdAsLong();
+            Long userId = SecurityUtils.getCurrentUserId();
             long readCount = noticeReadService.count(
                     new LambdaQueryWrapper<CampusNoticeRead>()
                             .eq(CampusNoticeRead::getNoticeId, id)
@@ -67,23 +92,22 @@ public class CampusNoticeController {
                 read.setUserId(userId);
                 noticeReadService.save(read);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         return Result.success(notice);
     }
 
-    /** 新增公告（草稿） */
     @PostMapping
     @SaCheckPermission("svc:notice:add")
     @LogRecord(module = "公告管理", type = "新增")
     public Result<Void> add(@RequestBody CampusNotice notice) {
-        notice.setPublishUserId(StpUtil.getLoginIdAsLong());
-        notice.setStatus(0); // 草稿
+        notice.setPublishUserId(SecurityUtils.getCurrentUserId());
+        notice.setStatus(0);
         noticeService.save(notice);
         return Result.success();
     }
 
-    /** 发布公告 */
     @PutMapping("/{id}/publish")
     @SaCheckPermission("svc:notice:edit")
     @LogRecord(module = "公告管理", type = "发布")
@@ -96,7 +120,6 @@ public class CampusNoticeController {
         return Result.success();
     }
 
-    /** 更新公告 */
     @PutMapping
     @SaCheckPermission("svc:notice:edit")
     public Result<Void> update(@RequestBody CampusNotice notice) {
@@ -104,12 +127,51 @@ public class CampusNoticeController {
         return Result.success();
     }
 
-    /** 删除公告 */
     @DeleteMapping("/{id}")
     @SaCheckPermission("svc:notice:delete")
     @LogRecord(module = "公告管理", type = "删除")
     public Result<Void> delete(@PathVariable Long id) {
         noticeService.removeById(id);
         return Result.success();
+    }
+
+    private boolean canCurrentUserView(CampusNotice notice) {
+        if (notice == null) {
+            return false;
+        }
+        if (SecurityUtils.hasRole("admin")) {
+            return true;
+        }
+        if (!Integer.valueOf(1).equals(notice.getStatus())) {
+            return false;
+        }
+        Integer type = notice.getNoticeType();
+        if (type == null || type == 0) {
+            return true;
+        }
+        if (type == 1) {
+            return StrUtil.isNotBlank(notice.getTargetRole()) && SecurityUtils.hasRole(notice.getTargetRole());
+        }
+        if (type == 2) {
+            String className = getCurrentClassName();
+            return StrUtil.isNotBlank(className) && StrUtil.equals(className, notice.getTargetClass());
+        }
+        return false;
+    }
+
+    private List<String> resolveCurrentRoleKeys() {
+        List<String> roleKeys = new ArrayList<>();
+        if (SecurityUtils.hasRole("admin")) roleKeys.add("admin");
+        if (SecurityUtils.hasRole("teacher")) roleKeys.add("teacher");
+        if (SecurityUtils.hasRole("student")) roleKeys.add("student");
+        return roleKeys;
+    }
+
+    private String getCurrentClassName() {
+        if (userService == null) {
+            return null;
+        }
+        SysUser user = userService.getById(SecurityUtils.getCurrentUserId());
+        return user == null ? null : user.getClassName();
     }
 }
