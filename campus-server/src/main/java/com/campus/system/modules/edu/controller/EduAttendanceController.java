@@ -12,8 +12,12 @@ import com.campus.system.common.api.Result;
 import com.campus.system.common.exception.BusinessException;
 import com.campus.system.modules.edu.entity.EduAttendanceRecord;
 import com.campus.system.modules.edu.entity.EduAttendanceSession;
+import com.campus.system.modules.edu.entity.EduCourseClass;
 import com.campus.system.modules.edu.service.IEduAttendanceRecordService;
 import com.campus.system.modules.edu.service.IEduAttendanceSessionService;
+import com.campus.system.modules.edu.mapper.EduCourseClassMapper;
+import com.campus.system.modules.sys.entity.SysUser;
+import com.campus.system.modules.sys.service.ISysUserService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -35,6 +39,8 @@ public class EduAttendanceController {
     private final IEduAttendanceSessionService sessionService;
     private final IEduAttendanceRecordService recordService;
     private final StringRedisTemplate redisTemplate;
+    private final EduCourseClassMapper courseClassMapper;
+    private final ISysUserService userService;
 
     private static final String ATTENDANCE_KEY_PREFIX = "attendance:session:";
 
@@ -148,6 +154,24 @@ public class EduAttendanceController {
             throw new BusinessException("签到码无效或签到已结束");
         }
         Long sessionId = Long.parseLong(sessionIdStr);
+
+        // #5 学生-课程归属校验：查session获取courseId，再校验学生班级是否属于该课程
+        EduAttendanceSession session = sessionService.getById(sessionId);
+        if (session != null) {
+            SysUser student = userService.getById(studentId);
+            if (student != null && student.getClassName() != null) {
+                long classBound = courseClassMapper.selectCount(
+                        new LambdaQueryWrapper<EduCourseClass>()
+                                .eq(EduCourseClass::getCourseId, session.getCourseId())
+                                .eq(EduCourseClass::getClassName, student.getClassName())
+                );
+                if (classBound == 0) {
+                    throw new BusinessException("您不属于该课程的考勤班级，无法签到");
+                }
+            } else {
+                throw new BusinessException("无法获取您的班级信息，无法签到");
+            }
+        }
 
         // 2. 防重复签到：检查是否已签
         long existCount = recordService.count(

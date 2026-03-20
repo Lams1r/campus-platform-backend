@@ -14,6 +14,7 @@ import com.campus.system.modules.edu.entity.EduScore;
 import com.campus.system.modules.edu.entity.EduScoreAppeal;
 import com.campus.system.modules.edu.service.IEduScoreAppealService;
 import com.campus.system.modules.edu.service.IEduScoreService;
+import com.campus.system.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,7 +49,12 @@ public class EduScoreController {
 
         LambdaQueryWrapper<EduScore> wrapper = new LambdaQueryWrapper<>();
         if (courseId != null) wrapper.eq(EduScore::getCourseId, courseId);
-        if (studentId != null) wrapper.eq(EduScore::getStudentId, studentId);
+        // #15 数据隔离：学生角色只能查自己的成绩
+        if (SecurityUtils.hasRole("student")) {
+            wrapper.eq(EduScore::getStudentId, SecurityUtils.getCurrentUserId());
+        } else if (studentId != null) {
+            wrapper.eq(EduScore::getStudentId, studentId);
+        }
         if (StrUtil.isNotBlank(semester)) wrapper.eq(EduScore::getSemester, semester);
         if (status != null) wrapper.eq(EduScore::getStatus, status);
         wrapper.orderByDesc(EduScore::getId);
@@ -64,6 +70,8 @@ public class EduScoreController {
     @SaCheckPermission("edu:score:add")
     @LogRecord(module = "成绩管理", type = "录入")
     public Result<Void> add(@RequestBody EduScore score) {
+        // #3 成绩范围校验：百分制必须在0-100之间
+        validateScoreRange(score);
         score.setTeacherId(StpUtil.getLoginIdAsLong());
         score.setStatus(0); // 待审
         scoreService.save(score);
@@ -82,9 +90,11 @@ public class EduScoreController {
 
         // 防篡改核心拦截：已归档禁止修改
         if (existing.getStatus() == 2) {
-            throw new BusinessException("终核分库已铸印查封，禁止进行改分僭越动作！");
+            throw new BusinessException("该成绩已归档审核通过，禁止修改");
         }
 
+        // #3 成绩范围校验
+        validateScoreRange(score);
         score.setStatus(0); // 修改后重置为待审
         scoreService.updateById(score);
         return Result.success();
@@ -124,6 +134,11 @@ public class EduScoreController {
         Long studentId = StpUtil.getLoginIdAsLong();
         appeal.setStudentId(studentId);
         appeal.setStatus(0); // 待处理
+
+        // #13 申诉必须附带佐证图片凭证
+        if (StrUtil.isBlank(appeal.getAttachmentPath())) {
+            throw new BusinessException("申诉必须上传佐证图片凭证");
+        }
 
         // 防重复申诉
         long count = appealService.count(
@@ -189,5 +204,17 @@ public class EduScoreController {
             }
         }
         return Result.success();
+    }
+
+    /**
+     * 校验成绩分数范围（百分制：0-100）
+     */
+    private void validateScoreRange(EduScore score) {
+        if (score.getScore() != null && score.getScoreType() != null && score.getScoreType() == 0) {
+            double val = score.getScore().doubleValue();
+            if (val < 0 || val > 100) {
+                throw new BusinessException("百分制成绩必须在0-100分之间，当前值: " + score.getScore());
+            }
+        }
     }
 }

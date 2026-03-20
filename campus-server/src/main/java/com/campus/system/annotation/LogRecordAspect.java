@@ -2,8 +2,9 @@ package com.campus.system.annotation;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.json.JSONUtil;
-import com.campus.system.modules.sys.entity.SysOperateLog;
-import com.campus.system.modules.sys.service.ISysOperateLogService;
+import com.campus.system.modules.sys.entity.SysUser;
+import com.campus.system.modules.sys.service.ISysUserService;
+import com.campus.system.modules.sys.service.impl.AsyncLogService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,7 +12,6 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -22,7 +22,7 @@ import java.lang.reflect.Method;
 
 /**
  * 操作日志 AOP 切面
- * 环绕通知：在目标方法执行前后捕获操作信息，异步落盘到 sys_operate_log
+ * 环绕通知：在目标方法执行前后捕获操作信息，通过 AsyncLogService 异步落盘
  */
 @Slf4j
 @Aspect
@@ -30,7 +30,8 @@ import java.lang.reflect.Method;
 @RequiredArgsConstructor
 public class LogRecordAspect {
 
-    private final ISysOperateLogService operateLogService;
+    private final AsyncLogService asyncLogService;
+    private final ISysUserService userService;
 
     @Around("@annotation(com.campus.system.annotation.LogRecord)")
     public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
@@ -45,13 +46,14 @@ public class LogRecordAspect {
         ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         HttpServletRequest request = attrs != null ? attrs.getRequest() : null;
 
-        // 获取操作人信息
+        // 获取操作人信息（修正：通过查询用户表获取真实用户名，而非 loginId）
         Long userId = null;
         String username = null;
         try {
             if (StpUtil.isLogin()) {
                 userId = StpUtil.getLoginIdAsLong();
-                username = StpUtil.getLoginIdAsString();
+                SysUser user = userService.getById(userId);
+                username = (user != null) ? user.getUsername() : String.valueOf(userId);
             }
         } catch (Exception ignored) {}
 
@@ -70,45 +72,21 @@ public class LogRecordAspect {
             throw e;
         } finally {
             long costTime = System.currentTimeMillis() - startTime;
-            // 异步保存日志
+            // 通过独立 Bean 异步保存日志（解决 @Async 自调用失效问题）
             try {
-                asyncSaveLog(logAnnotation.module(), logAnnotation.type(),
+                asyncLogService.recordOperateLog(
+                        logAnnotation.module(), logAnnotation.type(),
                         userId, username,
                         request != null ? request.getMethod() : "",
                         request != null ? request.getRequestURI() : "",
                         params,
                         result != null ? truncate(JSONUtil.toJsonStr(result), 2000) : null,
                         request != null ? getClientIp(request) : "",
-                        status, errorMsg, costTime);
+                        status, truncate(errorMsg, 500), costTime);
             } catch (Exception e) {
                 log.warn("操作日志记录异常: {}", e.getMessage());
             }
         }
-    }
-
-    /**
-     * 异步保存操作日志
-     */
-    @Async
-    public void asyncSaveLog(String module, String operateType,
-                             Long userId, String username,
-                             String requestMethod, String requestUrl,
-                             String requestParams, String responseResult,
-                             String ip, int status, String errorMsg, long costTime) {
-        SysOperateLog operateLog = new SysOperateLog();
-        operateLog.setModule(module);
-        operateLog.setOperateType(operateType);
-        operateLog.setOperateUserId(userId);
-        operateLog.setOperateUserName(username);
-        operateLog.setRequestMethod(requestMethod);
-        operateLog.setRequestUrl(requestUrl);
-        operateLog.setRequestParams(truncate(requestParams, 2000));
-        operateLog.setResponseResult(responseResult);
-        operateLog.setIp(ip);
-        operateLog.setStatus(status);
-        operateLog.setErrorMsg(truncate(errorMsg, 500));
-        operateLog.setCostTime(costTime);
-        operateLogService.save(operateLog);
     }
 
     /**
