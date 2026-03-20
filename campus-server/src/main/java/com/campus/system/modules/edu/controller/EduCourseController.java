@@ -135,7 +135,13 @@ public class EduCourseController {
     @DeleteMapping("/{id}")
     @SaCheckPermission("edu:course:delete")
     @LogRecord(module = "课程管理", type = "删除")
+    @Transactional(rollbackFor = Exception.class)
     public Result<Void> delete(@PathVariable Long id) {
+        // #9 级联清理关联表（Service层接管引用完整性）
+        courseTeacherMapper.delete(new LambdaQueryWrapper<EduCourseTeacher>()
+                .eq(EduCourseTeacher::getCourseId, id));
+        courseClassMapper.delete(new LambdaQueryWrapper<EduCourseClass>()
+                .eq(EduCourseClass::getCourseId, id));
         courseService.removeById(id);
         return Result.success();
     }

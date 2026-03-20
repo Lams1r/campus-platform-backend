@@ -48,8 +48,8 @@ public class EduMaterialController {
             "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "zip", "rar", "jpg", "png"
     );
 
-    /** 单文件大小限制 50MB */
-    private static final long MAX_FILE_SIZE = 50 * 1024 * 1024;
+    /** 单文件大小限制 10MB（需求规格要求） */
+    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
 
     /**
      * 查询课程下的资料列表

@@ -63,6 +63,25 @@ public class CampusRepairController {
         order.setOrderNo("RP" + IdUtil.getSnowflakeNextIdStr());
         order.setStatus(0);
         if (order.getUrgencyLevel() == null) order.setUrgencyLevel(0);
+
+        // #10 报修必须携带损坏照片作为前置证据
+        if (order.getImagePaths() == null || order.getImagePaths().trim().isEmpty()) {
+            throw new BusinessException("请上传损坏区域照片作为报修凭证");
+        }
+
+        // #11 同一房间若已有未完成工单（状态0或1），禁止重复提交
+        if (order.getRoomId() != null) {
+            long pendingCount = repairService.count(
+                    new LambdaQueryWrapper<CampusRepairOrder>()
+                            .eq(CampusRepairOrder::getRoomId, order.getRoomId())
+                            .eq(CampusRepairOrder::getApplicantId, order.getApplicantId())
+                            .in(CampusRepairOrder::getStatus, 0, 1)
+            );
+            if (pendingCount > 0) {
+                throw new BusinessException("该房间已有未完成的报修工单，请勿重复提交");
+            }
+        }
+
         repairService.save(order);
         return Result.success();
     }

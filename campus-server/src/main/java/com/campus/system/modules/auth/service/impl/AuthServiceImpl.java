@@ -10,16 +10,17 @@ import com.campus.system.modules.auth.dto.LoginDTO;
 import com.campus.system.modules.auth.service.AuthService;
 import com.campus.system.modules.auth.vo.CaptchaVO;
 import com.campus.system.modules.auth.vo.LoginVO;
-import com.campus.system.modules.sys.entity.SysLoginLog;
 import com.campus.system.modules.sys.entity.SysUser;
-import com.campus.system.modules.sys.service.ISysLoginLogService;
 import com.campus.system.modules.sys.service.ISysUserService;
+import com.campus.system.modules.sys.service.impl.AsyncLogService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -34,7 +35,7 @@ import java.util.concurrent.TimeUnit;
 public class AuthServiceImpl implements AuthService {
 
     private final ISysUserService userService;
-    private final ISysLoginLogService loginLogService;
+    private final AsyncLogService asyncLogService;
     private final StringRedisTemplate redisTemplate;
 
     /**
@@ -120,8 +121,11 @@ public class AuthServiceImpl implements AuthService {
         // 7. Sa-Token 登录
         StpUtil.login(user.getId());
 
-        // 8. 异步记录登录日志
-        asyncRecordLoginLog(user.getId(), user.getUsername(), "登录成功");
+        // 8. 异步记录登录日志（通过独立 Bean 调用，确保 @Async 生效）
+        asyncLogService.recordLoginLog(
+                user.getId(), user.getUsername(), "登录成功",
+                0, 0, getClientIp(), getUserAgent()
+        );
 
         // 9. 组装返回
         LoginVO vo = new LoginVO();
@@ -141,8 +145,13 @@ public class AuthServiceImpl implements AuthService {
     public void logout() {
         if (StpUtil.isLogin()) {
             Long userId = StpUtil.getLoginIdAsLong();
+            // 先查出用户名再登出，避免登出后无法获取信息
+            SysUser user = userService.getById(userId);
+            String username = (user != null) ? user.getUsername() : null;
+            String ip = getClientIp();
+            String ua = getUserAgent();
             StpUtil.logout();
-            asyncRecordLoginLog(userId, null, "登出成功");
+            asyncLogService.recordLoginLog(userId, username, "登出成功", 1, 0, ip, ua);
         }
     }
 
@@ -164,18 +173,39 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * 异步记录登录日志
+     * 获取客户端真实IP
      */
-    @Async
-    public void asyncRecordLoginLog(Long userId, String username, String message) {
+    private String getClientIp() {
         try {
-            SysLoginLog log = new SysLoginLog();
-            log.setUserId(userId);
-            log.setUsername(username);
-            log.setMsg(message);
-            loginLogService.save(log);
-        } catch (Exception ignored) {
-            // 日志记录失败不影响主流程
+            ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attrs == null) return null;
+            HttpServletRequest request = attrs.getRequest();
+            String ip = request.getHeader("X-Forwarded-For");
+            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+                ip = request.getHeader("X-Real-IP");
+            }
+            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+                ip = request.getRemoteAddr();
+            }
+            if (ip != null && ip.contains(",")) {
+                ip = ip.split(",")[0].trim();
+            }
+            return ip;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 获取浏览器 User-Agent
+     */
+    private String getUserAgent() {
+        try {
+            ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attrs == null) return null;
+            return attrs.getRequest().getHeader("User-Agent");
+        } catch (Exception e) {
+            return null;
         }
     }
 }

@@ -8,6 +8,8 @@ import com.campus.system.common.api.Result;
 import com.campus.system.common.exception.BusinessException;
 import com.campus.system.modules.edu.entity.EduCourseEvaluation;
 import com.campus.system.modules.edu.service.IEduCourseEvaluationService;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.hutool.core.util.StrUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -59,14 +61,19 @@ public class EduEvaluationController {
         if (evaluation.getStarRating() == null || evaluation.getStarRating() < 1 || evaluation.getStarRating() > 5) {
             throw new BusinessException("星级评分需在1-5之间");
         }
+        // #8 文字评价上限200字
+        if (StrUtil.isNotBlank(evaluation.getContent()) && evaluation.getContent().length() > 200) {
+            throw new BusinessException("文字评价不能超过200字");
+        }
         evaluationService.save(evaluation);
         return Result.success();
     }
 
     /**
-     * 删除评价（管理员权limited）
+     * 删除评价（管理员权限）
      */
     @DeleteMapping("/{id}")
+    @SaCheckRole("admin")
     public Result<Void> delete(@PathVariable Long id) {
         evaluationService.removeById(id);
         return Result.success();
