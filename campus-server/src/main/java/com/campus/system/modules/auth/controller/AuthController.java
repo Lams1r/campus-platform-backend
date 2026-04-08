@@ -5,44 +5,41 @@ import com.campus.system.modules.auth.dto.LoginDTO;
 import com.campus.system.modules.auth.service.AuthService;
 import com.campus.system.modules.auth.vo.CaptchaVO;
 import com.campus.system.modules.auth.vo.LoginVO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 认证授权控制器
- * 白名单接口：/auth/captcha, /auth/login（在 SaTokenConfig 中已放行）
+ * 认证授权控制器。
  */
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
+@Tag(name = "认证管理", description = "登录、登出与验证码相关接口")
 public class AuthController {
 
     private final AuthService authService;
 
-    /**
-     * 获取图形验证码
-     * GET /api/auth/captcha
-     */
     @GetMapping("/captcha")
+    @Operation(summary = "获取图形验证码", description = "生成登录所需的图形验证码与验证码标识")
     public Result<CaptchaVO> getCaptcha() {
         return Result.success(authService.generateCaptcha());
     }
 
-    /**
-     * 用户登录
-     * POST /api/auth/login
-     */
     @PostMapping("/login")
+    @Operation(summary = "用户登录", description = "校验用户名、密码和验证码，登录成功后返回令牌信息")
     public Result<LoginVO> login(@Valid @RequestBody LoginDTO dto) {
         return Result.success(authService.login(dto));
     }
 
-    /**
-     * 用户登出
-     * POST /api/auth/logout
-     */
     @PostMapping("/logout")
+    @Operation(summary = "用户登出", description = "注销当前登录会话")
     public Result<Void> logout() {
         authService.logout();
         return Result.success();

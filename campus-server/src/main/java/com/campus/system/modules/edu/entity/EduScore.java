@@ -2,6 +2,7 @@ package com.campus.system.modules.edu.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.campus.system.common.entity.BaseEntity;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -9,43 +10,44 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 成绩记录表
+ * 成绩记录。
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("edu_score")
+@Schema(description = "成绩记录")
 public class EduScore extends BaseEntity {
 
-    /** 课程ID */
+    @Schema(description = "课程ID")
     private Long courseId;
 
-    /** 学生ID */
+    @Schema(description = "学生ID")
     private Long studentId;
 
-    /** 录入教师ID */
+    @Schema(description = "录入教师ID")
     private Long teacherId;
 
-    /** 分数 */
+    @Schema(description = "成绩分数")
     private BigDecimal score;
 
-    /** 评分制 0-百分制 1-等级制 */
+    @Schema(description = "成绩类型，0-百分制，1-等级制")
     private Integer scoreType;
 
-    /** 等级（A/B/C/D/F，等级制时使用） */
+    @Schema(description = "等级成绩，如 A/B/C/D/F")
     private String scoreLevel;
 
-    /** 学期 */
+    @Schema(description = "学期")
     private String semester;
 
-    /** 状态 0-待审 1-已驳回 2-已归档 */
+    @Schema(description = "审核状态，0-待审，1-已驳回，2-已归档")
     private Integer status;
 
-    /** 审核管理员ID */
+    @Schema(description = "审核人ID")
     private Long auditUserId;
 
-    /** 审核时间 */
+    @Schema(description = "审核时间")
     private LocalDateTime auditTime;
 
-    /** 审核/驳回意见 */
+    @Schema(description = "审核备注")
     private String auditRemark;
 }

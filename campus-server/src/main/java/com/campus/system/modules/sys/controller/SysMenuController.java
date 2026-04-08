@@ -7,75 +7,73 @@ import com.campus.system.common.api.Result;
 import com.campus.system.modules.sys.entity.SysMenu;
 import com.campus.system.modules.sys.service.ISysMenuService;
 import com.campus.system.modules.sys.vo.MenuTreeVO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 菜单权限树控制器
+ * 菜单管理控制器。
  */
 @RestController
 @RequestMapping("/sys/menu")
 @RequiredArgsConstructor
+@Tag(name = "菜单管理", description = "系统菜单与权限树接口")
 public class SysMenuController {
 
     private final ISysMenuService menuService;
 
-    /**
-     * 获取完整菜单树形结构
-     * GET /api/sys/menu/tree
-     */
     @GetMapping("/tree")
     @SaCheckPermission("sys:menu:list")
+    @Operation(summary = "获取菜单树", description = "返回完整的系统菜单树形结构")
     public Result<List<MenuTreeVO>> tree() {
         List<SysMenu> allMenus = menuService.list(
                 new LambdaQueryWrapper<SysMenu>().orderByAsc(SysMenu::getSortOrder)
         );
-        List<MenuTreeVO> tree = buildTree(allMenus, 0L);
-        return Result.success(tree);
+        return Result.success(buildTree(allMenus, 0L));
     }
 
-    /**
-     * 获取菜单列表（扁平）
-     */
     @GetMapping("/list")
     @SaCheckPermission("sys:menu:list")
+    @Operation(summary = "查询菜单列表", description = "返回平铺结构的菜单列表")
     public Result<List<SysMenu>> list() {
         return Result.success(menuService.list(
                 new LambdaQueryWrapper<SysMenu>().orderByAsc(SysMenu::getSortOrder)
         ));
     }
 
-    /**
-     * 新增菜单
-     */
     @PostMapping
     @SaCheckPermission("sys:menu:add")
+    @Operation(summary = "新增菜单")
     public Result<Void> add(@Valid @RequestBody SysMenu menu) {
         menuService.save(menu);
         return Result.success();
     }
 
-    /**
-     * 更新菜单
-     */
     @PutMapping
     @SaCheckPermission("sys:menu:edit")
+    @Operation(summary = "更新菜单")
     public Result<Void> update(@Valid @RequestBody SysMenu menu) {
         menuService.updateById(menu);
         return Result.success();
     }
 
-    /**
-     * 删除菜单（含子节点检查）
-     */
     @DeleteMapping("/{id}")
     @SaCheckPermission("sys:menu:delete")
-    public Result<Void> delete(@PathVariable Long id) {
+    @Operation(summary = "删除菜单", description = "删除前会校验是否存在子菜单")
+    public Result<Void> delete(@Parameter(description = "菜单ID") @PathVariable Long id) {
         long childCount = menuService.count(
                 new LambdaQueryWrapper<SysMenu>().eq(SysMenu::getParentId, id)
         );
@@ -86,18 +84,13 @@ public class SysMenuController {
         return Result.success();
     }
 
-    // ============ 私有方法 ============
-
-    /**
-     * 递归构建菜单树
-     */
     private List<MenuTreeVO> buildTree(List<SysMenu> all, Long parentId) {
         return all.stream()
-                .filter(m -> parentId.equals(m.getParentId()))
-                .map(m -> {
+                .filter(menu -> parentId.equals(menu.getParentId()))
+                .map(menu -> {
                     MenuTreeVO vo = new MenuTreeVO();
-                    BeanUtil.copyProperties(m, vo);
-                    vo.setChildren(buildTree(all, m.getId()));
+                    BeanUtil.copyProperties(menu, vo);
+                    vo.setChildren(buildTree(all, menu.getId()));
                     return vo;
                 })
                 .collect(Collectors.toList());

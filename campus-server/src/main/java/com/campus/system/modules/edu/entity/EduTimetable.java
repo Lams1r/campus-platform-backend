@@ -2,44 +2,46 @@ package com.campus.system.modules.edu.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.campus.system.common.entity.BaseEntity;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * 课表排课表
+ * 课表安排。
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("edu_timetable")
+@Schema(description = "课表安排")
 public class EduTimetable extends BaseEntity {
 
-    /** 课程ID */
+    @Schema(description = "课程ID")
     private Long courseId;
 
-    /** 教师用户ID */
+    @Schema(description = "教师用户ID")
     private Long teacherId;
 
-    /** 班级名称 */
+    @Schema(description = "班级名称")
     private String className;
 
-    /** 星期几 1-7 */
+    @Schema(description = "星期几，1到7")
     private Integer dayOfWeek;
 
-    /** 开始节次 */
+    @Schema(description = "开始节次")
     private Integer startSection;
 
-    /** 结束节次 */
+    @Schema(description = "结束节次")
     private Integer endSection;
 
-    /** 教室地点 */
+    @Schema(description = "教室地点")
     private String classroom;
 
-    /** 起始周 */
+    @Schema(description = "开始周")
     private Integer startWeek;
 
-    /** 结束周 */
+    @Schema(description = "结束周")
     private Integer endWeek;
 
-    /** 学期 */
+    @Schema(description = "学期")
     private String semester;
 }

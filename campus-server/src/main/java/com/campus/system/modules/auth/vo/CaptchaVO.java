@@ -1,18 +1,20 @@
 package com.campus.system.modules.auth.vo;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
 /**
- * 验证码返回视图对象
+ * 图形验证码返回结果。
  */
 @Data
 @AllArgsConstructor
+@Schema(name = "验证码结果", description = "图形验证码的唯一标识与图片内容")
 public class CaptchaVO {
 
-    /** 唯一标识Key（前端回传时用于校验） */
+    @Schema(description = "验证码标识，用于登录时回传校验")
     private String captchaKey;
 
-    /** Base64编码的验证码图片 */
+    @Schema(description = "验证码图片，Base64 编码")
     private String captchaImage;
 }
