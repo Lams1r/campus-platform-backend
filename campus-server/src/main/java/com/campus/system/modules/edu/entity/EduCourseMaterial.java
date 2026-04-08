@@ -2,38 +2,40 @@ package com.campus.system.modules.edu.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.campus.system.common.entity.BaseEntity;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * 教学课件资料表
+ * 课程资料。
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("edu_course_material")
+@Schema(description = "课程资料")
 public class EduCourseMaterial extends BaseEntity {
 
-    /** 课程ID */
+    @Schema(description = "课程ID")
     private Long courseId;
 
-    /** 上传者ID（教师） */
+    @Schema(description = "上传人ID")
     private Long uploadUserId;
 
-    /** 文件原始名称 */
+    @Schema(description = "原始文件名")
     private String fileName;
 
-    /** 存储路径 */
+    @Schema(description = "存储路径")
     private String filePath;
 
-    /** 文件大小（字节） */
+    @Schema(description = "文件大小，单位字节")
     private Long fileSize;
 
-    /** 文件MIME类型 */
+    @Schema(description = "文件类型")
     private String fileType;
 
-    /** 文件MD5（防重复上传） */
+    @Schema(description = "文件MD5")
     private String fileMd5;
 
-    /** 下载次数 */
+    @Schema(description = "下载次数")
     private Integer downloadCount;
 }

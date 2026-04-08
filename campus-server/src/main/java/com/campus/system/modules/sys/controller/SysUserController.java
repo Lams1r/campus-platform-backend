@@ -10,120 +10,110 @@ import com.campus.system.modules.sys.dto.SysUserQueryDTO;
 import com.campus.system.modules.sys.dto.SysUserUpdateDTO;
 import com.campus.system.modules.sys.service.ISysUserService;
 import com.campus.system.modules.sys.vo.SysUserVO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * 用户管理控制器
+ * 用户管理控制器。
  */
 @RestController
 @RequestMapping("/sys/user")
 @RequiredArgsConstructor
+@Tag(name = "用户管理", description = "系统用户的查询与维护接口")
 public class SysUserController {
 
     private final ISysUserService userService;
 
-    /**
-     * 分页查询用户列表
-     * GET /api/sys/user/page
-     */
     @GetMapping("/page")
     @SaCheckPermission("sys:user:list")
-    public Result<PageResult<SysUserVO>> page(SysUserQueryDTO query) {
+    @Operation(summary = "分页查询用户列表", description = "按关键字、用户类型和状态分页查询系统用户")
+    public Result<PageResult<SysUserVO>> page(@ParameterObject SysUserQueryDTO query) {
         return Result.success(userService.queryUserPage(query));
     }
 
-    /**
-     * 获取用户详情
-     * GET /api/sys/user/{id}
-     */
     @GetMapping("/{id}")
     @SaCheckPermission("sys:user:query")
-    public Result<SysUserVO> detail(@PathVariable Long id) {
+    @Operation(summary = "获取用户详情")
+    public Result<SysUserVO> detail(@Parameter(description = "用户ID") @PathVariable Long id) {
         return Result.success(userService.getUserDetail(id));
     }
 
-    /**
-     * 新增用户
-     * POST /api/sys/user
-     */
     @PostMapping
     @SaCheckPermission("sys:user:add")
     @LogRecord(module = "用户管理", type = "新增")
+    @Operation(summary = "新增用户", description = "创建新的系统用户并绑定角色")
     public Result<Void> create(@Valid @RequestBody SysUserCreateDTO dto) {
         userService.createUser(dto);
         return Result.success();
     }
 
-    /**
-     * 更新用户
-     * PUT /api/sys/user
-     */
     @PutMapping
     @SaCheckPermission("sys:user:edit")
     @LogRecord(module = "用户管理", type = "修改")
+    @Operation(summary = "更新用户", description = "修改用户基础信息和角色绑定")
     public Result<Void> update(@Valid @RequestBody SysUserUpdateDTO dto) {
         userService.updateUser(dto);
         return Result.success();
     }
 
-    /**
-     * 删除用户（逻辑删除）
-     * DELETE /api/sys/user/{id}
-     */
     @DeleteMapping("/{id}")
     @SaCheckPermission("sys:user:delete")
     @LogRecord(module = "用户管理", type = "删除")
-    public Result<Void> delete(@PathVariable Long id) {
+    @Operation(summary = "删除用户")
+    public Result<Void> delete(@Parameter(description = "用户ID") @PathVariable Long id) {
         userService.deleteUser(id);
         return Result.success();
     }
 
-    /**
-     * 切换账号状态（启用/停用）
-     * PUT /api/sys/user/{id}/status/{status}
-     */
     @PutMapping("/{id}/status/{status}")
     @SaCheckPermission("sys:user:edit")
     @LogRecord(module = "用户管理", type = "状态变更")
-    public Result<Void> toggleStatus(@PathVariable Long id, @PathVariable Integer status) {
+    @Operation(summary = "切换账号状态", description = "修改用户账号状态并在启用时清空锁定信息")
+    public Result<Void> toggleStatus(
+            @Parameter(description = "用户ID") @PathVariable Long id,
+            @Parameter(description = "账号状态，0-正常，1-停用，2-锁定") @PathVariable Integer status) {
         userService.toggleStatus(id, status);
         return Result.success();
     }
 
-    /**
-     * 重置用户密码
-     * PUT /api/sys/user/{id}/resetPwd
-     */
     @PutMapping("/{id}/resetPwd")
     @SaCheckRole("admin")
     @LogRecord(module = "用户管理", type = "重置密码")
-    public Result<Void> resetPassword(@PathVariable Long id, @RequestParam String newPassword) {
+    @Operation(summary = "重置用户密码")
+    public Result<Void> resetPassword(
+            @Parameter(description = "用户ID") @PathVariable Long id,
+            @Parameter(description = "新密码") @RequestParam String newPassword) {
         userService.resetPassword(id, newPassword);
         return Result.success();
     }
 
-    /**
-     * Excel 导入用户
-     * POST /api/sys/user/import
-     */
     @PostMapping("/import")
     @SaCheckRole("admin")
     @LogRecord(module = "用户管理", type = "导入")
-    public Result<String> importUsers(@RequestParam("file") MultipartFile file) {
+    @Operation(summary = "导入用户", description = "通过 Excel 批量导入用户数据")
+    public Result<String> importUsers(@Parameter(description = "Excel 文件") @RequestParam("file") MultipartFile file) {
         return Result.success(userService.importUsers(file));
     }
 
-    /**
-     * Excel 导出用户
-     * GET /api/sys/user/export
-     */
     @GetMapping("/export")
     @SaCheckRole("admin")
-    public void exportUsers(SysUserQueryDTO query, HttpServletResponse response) {
+    @Operation(summary = "导出用户", description = "按查询条件导出用户数据为 Excel")
+    public void exportUsers(@ParameterObject SysUserQueryDTO query, HttpServletResponse response) {
         userService.exportUsers(query, response);
     }
 }

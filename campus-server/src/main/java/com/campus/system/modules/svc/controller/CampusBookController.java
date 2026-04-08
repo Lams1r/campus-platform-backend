@@ -14,6 +14,9 @@ import com.campus.system.modules.svc.entity.CampusBookBorrow;
 import com.campus.system.modules.svc.service.ICampusBookBorrowService;
 import com.campus.system.modules.svc.service.ICampusBookService;
 import com.campus.system.util.SecurityUtils;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -27,17 +30,19 @@ import java.time.temporal.ChronoUnit;
 @RestController
 @RequestMapping("/svc/book")
 @RequiredArgsConstructor
+@Tag(name = "图书管理", description = "图书台账与借阅归还接口")
 public class CampusBookController {
 
     private final ICampusBookService bookService;
     private final ICampusBookBorrowService borrowService;
 
     @GetMapping("/page")
+    @Operation(summary = "分页查询图书列表")
     public Result<PageResult<CampusBook>> page(
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String category) {
+            @Parameter(description = "当前页码") @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "每页条数") @RequestParam(defaultValue = "10") Integer pageSize,
+            @Parameter(description = "关键字") @RequestParam(required = false) String keyword,
+            @Parameter(description = "图书分类") @RequestParam(required = false) String category) {
 
         LambdaQueryWrapper<CampusBook> wrapper = new LambdaQueryWrapper<>();
         if (StrUtil.isNotBlank(keyword)) {
@@ -55,6 +60,7 @@ public class CampusBookController {
     @PostMapping
     @SaCheckPermission("svc:book:add")
     @LogRecord(module = "图书管理", type = "新增")
+    @Operation(summary = "新增图书")
     public Result<Void> add(@RequestBody CampusBook book) {
         book.setAvailableCount(book.getTotalCount());
         bookService.save(book);
@@ -63,6 +69,7 @@ public class CampusBookController {
 
     @PutMapping
     @SaCheckPermission("svc:book:edit")
+    @Operation(summary = "更新图书")
     public Result<Void> update(@RequestBody CampusBook book) {
         bookService.updateById(book);
         return Result.success();
@@ -70,14 +77,16 @@ public class CampusBookController {
 
     @DeleteMapping("/{id}")
     @SaCheckPermission("svc:book:delete")
-    public Result<Void> delete(@PathVariable Long id) {
+    @Operation(summary = "删除图书")
+    public Result<Void> delete(@Parameter(description = "图书ID") @PathVariable Long id) {
         bookService.removeById(id);
         return Result.success();
     }
 
     @PostMapping("/borrow")
     @Transactional(rollbackFor = Exception.class)
-    public Result<Void> borrow(@RequestParam Long bookId) {
+    @Operation(summary = "提交图书借阅")
+    public Result<Void> borrow(@Parameter(description = "图书ID") @RequestParam Long bookId) {
         Long studentId = SecurityUtils.getCurrentUserId();
 
         long borrowing = borrowService.count(
@@ -113,7 +122,8 @@ public class CampusBookController {
 
     @PutMapping("/return/{borrowId}")
     @Transactional(rollbackFor = Exception.class)
-    public Result<Void> returnBook(@PathVariable Long borrowId) {
+    @Operation(summary = "归还图书")
+    public Result<Void> returnBook(@Parameter(description = "借阅记录ID") @PathVariable Long borrowId) {
         CampusBookBorrow borrow = borrowService.getById(borrowId);
         if (borrow == null) throw new BusinessException("借阅记录不存在");
         if (borrow.getStatus() != 0 && borrow.getStatus() != 2) throw new BusinessException("该记录已归还");
@@ -139,9 +149,10 @@ public class CampusBookController {
     }
 
     @GetMapping("/borrow/my")
+    @Operation(summary = "查询我的借阅记录")
     public Result<PageResult<CampusBookBorrow>> myBorrows(
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
+            @Parameter(description = "当前页码") @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "每页条数") @RequestParam(defaultValue = "10") Integer pageSize) {
         Long studentId = SecurityUtils.getCurrentUserId();
         Page<CampusBookBorrow> page = borrowService.page(new Page<>(pageNum, pageSize),
                 new LambdaQueryWrapper<CampusBookBorrow>()
@@ -153,10 +164,11 @@ public class CampusBookController {
 
     @GetMapping("/borrow/page")
     @SaCheckPermission("svc:book:list")
+    @Operation(summary = "分页查询借阅记录")
     public Result<PageResult<CampusBookBorrow>> borrowPage(
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "20") Integer pageSize,
-            @RequestParam(required = false) Integer status) {
+            @Parameter(description = "当前页码") @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "每页条数") @RequestParam(defaultValue = "20") Integer pageSize,
+            @Parameter(description = "借阅状态") @RequestParam(required = false) Integer status) {
         LambdaQueryWrapper<CampusBookBorrow> wrapper = new LambdaQueryWrapper<>();
         if (status != null) wrapper.eq(CampusBookBorrow::getStatus, status);
         wrapper.orderByDesc(CampusBookBorrow::getId);

@@ -2,25 +2,27 @@ package com.campus.system.modules.svc.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.campus.system.common.entity.BaseEntity;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
 
 /**
- * 大屏数据快照表
+ * 看板快照。
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("campus_dashboard_snapshot")
+@Schema(description = "看板统计快照")
 public class CampusDashboardSnapshot extends BaseEntity {
 
-    /** 快照标识（如 attendance_rate, repair_rate） */
+    @Schema(description = "快照标识")
     private String snapshotKey;
 
-    /** 快照JSON数据 */
+    @Schema(description = "快照JSON数据")
     private String snapshotData;
 
-    /** 快照生成时间 */
+    @Schema(description = "快照生成时间")
     private LocalDateTime snapshotTime;
 }

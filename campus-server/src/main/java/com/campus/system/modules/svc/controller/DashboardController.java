@@ -18,6 +18,8 @@ import com.campus.system.modules.svc.service.ICampusBookService;
 import com.campus.system.modules.svc.service.ICampusDashboardSnapshotService;
 import com.campus.system.modules.svc.service.ICampusRepairOrderService;
 import com.campus.system.modules.sys.service.ISysUserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,12 +32,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 大屏数据概览控制器
- * 提供首页仪表盘统计数据（缓存快照优先，定时刷新）
+ * 数据看板控制器。
  */
 @RestController
 @RequestMapping("/dashboard")
 @RequiredArgsConstructor
+@Tag(name = "数据看板", description = "首页概览与统计快照接口")
 public class DashboardController {
 
     private static final String OVERVIEW_SNAPSHOT_KEY = "dashboard_overview";
@@ -52,6 +54,7 @@ public class DashboardController {
     private Cache<String, CampusDashboardSnapshot> overviewSnapshotCache;
 
     @GetMapping("/overview")
+    @Operation(summary = "获取看板概览")
     public Result<Map<String, Object>> overview() {
         CampusDashboardSnapshot snapshot = getCachedOverviewSnapshot();
         if (snapshot == null) {
@@ -67,12 +70,14 @@ public class DashboardController {
 
     @PostMapping("/snapshot")
     @SaCheckPermission("dashboard:snapshot")
+    @Operation(summary = "生成看板快照")
     public Result<Void> saveSnapshot() {
         refreshOverviewSnapshotInternal();
         return Result.success();
     }
 
     @GetMapping("/snapshot/latest")
+    @Operation(summary = "获取最新看板快照")
     public Result<CampusDashboardSnapshot> latestSnapshot() {
         CampusDashboardSnapshot snapshot = getCachedOverviewSnapshot();
         if (snapshot == null) {

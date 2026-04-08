@@ -15,6 +15,10 @@ import com.campus.system.modules.edu.entity.EduCourseTeacher;
 import com.campus.system.modules.edu.service.IEduCourseService;
 import com.campus.system.modules.edu.mapper.EduCourseClassMapper;
 import com.campus.system.modules.edu.mapper.EduCourseTeacherMapper;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +34,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/edu/course")
 @RequiredArgsConstructor
+@Tag(name = "课程管理", description = "课程信息维护与绑定管理接口")
 public class EduCourseController {
 
     private final IEduCourseService courseService;
@@ -41,12 +46,13 @@ public class EduCourseController {
      */
     @GetMapping("/page")
     @SaCheckPermission("edu:course:list")
+    @Operation(summary = "分页查询课程列表")
     public Result<PageResult<EduCourse>> page(
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String semester,
-            @RequestParam(required = false) Integer status) {
+            @Parameter(description = "当前页码") @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "每页条数") @RequestParam(defaultValue = "10") Integer pageSize,
+            @Parameter(description = "关键字") @RequestParam(required = false) String keyword,
+            @Parameter(description = "学期") @RequestParam(required = false) String semester,
+            @Parameter(description = "课程状态") @RequestParam(required = false) Integer status) {
 
         LambdaQueryWrapper<EduCourse> wrapper = new LambdaQueryWrapper<>();
         if (StrUtil.isNotBlank(keyword)) {
@@ -65,7 +71,8 @@ public class EduCourseController {
      */
     @GetMapping("/{id}")
     @SaCheckPermission("edu:course:query")
-    public Result<CourseDetailVO> detail(@PathVariable Long id) {
+    @Operation(summary = "获取课程详情")
+    public Result<CourseDetailVO> detail(@Parameter(description = "课程ID") @PathVariable Long id) {
         EduCourse course = courseService.getById(id);
         if (course == null) throw new BusinessException("课程不存在");
 
@@ -91,6 +98,7 @@ public class EduCourseController {
     @SaCheckPermission("edu:course:add")
     @LogRecord(module = "课程管理", type = "新增")
     @Transactional(rollbackFor = Exception.class)
+    @Operation(summary = "新增课程")
     public Result<Void> create(@Valid @RequestBody CourseCreateDTO dto) {
         // 课程编码唯一
         long count = courseService.count(new LambdaQueryWrapper<EduCourse>().eq(EduCourse::getCourseCode, dto.getCourseCode()));
@@ -113,6 +121,7 @@ public class EduCourseController {
     @SaCheckPermission("edu:course:edit")
     @LogRecord(module = "课程管理", type = "修改")
     @Transactional(rollbackFor = Exception.class)
+    @Operation(summary = "更新课程")
     public Result<Void> update(@Valid @RequestBody CourseCreateDTO dto) {
         if (dto.getId() == null) throw new BusinessException("课程ID不能为空");
         EduCourse course = courseService.getById(dto.getId());
@@ -136,7 +145,8 @@ public class EduCourseController {
     @SaCheckPermission("edu:course:delete")
     @LogRecord(module = "课程管理", type = "删除")
     @Transactional(rollbackFor = Exception.class)
-    public Result<Void> delete(@PathVariable Long id) {
+    @Operation(summary = "删除课程")
+    public Result<Void> delete(@Parameter(description = "课程ID") @PathVariable Long id) {
         // #9 级联清理关联表（Service层接管引用完整性）
         courseTeacherMapper.delete(new LambdaQueryWrapper<EduCourseTeacher>()
                 .eq(EduCourseTeacher::getCourseId, id));
@@ -152,7 +162,8 @@ public class EduCourseController {
     @PutMapping("/{id}/finish")
     @SaCheckPermission("edu:course:edit")
     @LogRecord(module = "课程管理", type = "结课")
-    public Result<Void> finish(@PathVariable Long id) {
+    @Operation(summary = "课程结课")
+    public Result<Void> finish(@Parameter(description = "课程ID") @PathVariable Long id) {
         EduCourse course = courseService.getById(id);
         if (course == null) throw new BusinessException("课程不存在");
         course.setStatus(1);
@@ -185,22 +196,46 @@ public class EduCourseController {
     // ============ 内部 DTO/VO ============
 
     @Data
+    @Schema(name = "课程新增请求", description = "新增或更新课程时提交的请求参数")
     public static class CourseCreateDTO {
+        @Schema(description = "课程ID，更新时必填")
         private Long id;
+
+        @Schema(description = "课程名称")
         private String courseName;
+
+        @Schema(description = "课程编码")
         private String courseCode;
+
+        @Schema(description = "学分")
         private java.math.BigDecimal credit;
+
+        @Schema(description = "学时")
         private Integer hours;
+
+        @Schema(description = "学期")
         private String semester;
+
+        @Schema(description = "课程简介")
         private String description;
+
+        @Schema(description = "授课教师ID列表")
         private List<Long> teacherIds;
+
+        @Schema(description = "关联班级名称列表")
         private List<String> classNames;
     }
 
     @Data
+    @Schema(name = "课程详情", description = "课程详情响应")
     public static class CourseDetailVO {
+        @Schema(description = "课程基础信息")
         private EduCourse course;
+
+        @Schema(description = "授课教师ID列表")
         private List<Long> teacherIds;
+
+        @Schema(description = "关联班级名称列表")
         private List<String> classNames;
     }
 }
