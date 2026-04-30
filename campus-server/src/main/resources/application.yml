@@ -12,15 +12,15 @@ spring:
       max-request-size: 10MB
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://8.148.245.72:3306/campus_system?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
-    username: root
-    password: ldx18933875010
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/campus_system?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
   data:
     redis:
-      host: 8.148.245.72
-      port: 6379
-      database: 0
-      password: ldx18933875010
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
+      password: ${REDIS_PASSWORD:}
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*Mapper.xml
@@ -56,7 +56,7 @@ jetcache:
       keyConvertor: fastjson
       valueEncoder: java
       valueDecoder: java
-      uri: redis://:ldx18933875010@8.148.245.72:6379/
+      uri: ${JETCACHE_REDIS_URI:redis://127.0.0.1:6379/}
 
 campus:
-  upload-path: ./uploads
+  upload-path: ${UPLOAD_PATH:./uploads}
