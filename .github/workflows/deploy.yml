@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -24,26 +28,59 @@ jobs:
       - name: Build backend jar
         run: mvn -pl campus-server -am clean package -DskipTests
 
-      - name: Verify jar artifact
-        run: test -f campus-server/target/campus-server-1.0.0-SNAPSHOT.jar
+      - name: Locate jar artifact
+        id: jar
+        run: |
+          JAR=$(ls campus-server/target/campus-server-*.jar | grep -v sources | grep -v javadoc | head -n 1)
+          test -f "$JAR"
+          echo "path=$JAR" >> "$GITHUB_OUTPUT"
+          echo "Found jar: $JAR"
 
       - name: Configure SSH
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' '${{ secrets.SERVER_SSH_KEY }}' > ~/.ssh/id_rsa
+          printf '%s\n' '${{ secrets.BACKEND_SSH_KEY }}' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.BACKEND_HOST }} >> ~/.ssh/known_hosts
 
       - name: Upload jar to server
         run: |
-          scp campus-server/target/campus-server-1.0.0-SNAPSHOT.jar ubuntu@${{ secrets.SERVER_IP }}:/home/ubuntu/campus-server.jar.new
+          scp -o StrictHostKeyChecking=no "${{ steps.jar.outputs.path }}" \
+            ${{ secrets.BACKEND_USER }}@${{ secrets.BACKEND_HOST }}:/opt/campus-platform/app/app.jar.new
 
-      - name: Restart backend service
+      - name: Restart with health check & rollback
         run: |
-          ssh ubuntu@${{ secrets.SERVER_IP }} '
+          ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.BACKEND_USER }}@${{ secrets.BACKEND_HOST }} \
+            'bash -s' << 'REMOTE'
             set -e
-            sudo mv /home/ubuntu/campus-server.jar.new /opt/apps/backend/campus-server.jar
-            sudo systemctl restart campus-backend
-            sudo systemctl status campus-backend --no-pager -l
-            curl -I http://127.0.0.1:8080/api/doc.html
-          '
+            APP_DIR=/opt/campus-platform/app
+
+            cd "$APP_DIR"
+            # 备份当前版本
+            if [ -f app.jar ]; then
+              cp app.jar app.jar.bak
+            fi
+
+            mv app.jar.new app.jar
+            sudo systemctl restart campus-platform
+
+            # 等待启动并健康检查
+            echo "Waiting for service to be healthy..."
+            for i in {1..30}; do
+              sleep 2
+              if curl -fsS http://127.0.0.1:8080/api/doc.html > /dev/null 2>&1; then
+                echo "Health check passed at attempt $i"
+                sudo systemctl --no-pager status campus-platform | head -n 15
+                exit 0
+              fi
+            done
+
+            echo "::error::Health check failed, rolling back"
+            if [ -f app.jar.bak ]; then
+              mv app.jar.bak app.jar
+              sudo systemctl restart campus-platform
+            fi
+            sudo journalctl -u campus-platform -n 100 --no-pager
+            exit 1
+          REMOTE
