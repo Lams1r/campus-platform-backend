@@ -204,6 +204,99 @@ INSERT INTO `sys_user` (`id`, `username`, `password`, `real_name`, `user_type`, 
 -- 管理员角色绑定
 INSERT INTO `sys_user_role` (`user_id`, `role_id`) VALUES (1, 1);
 
+-- ============================================================
+-- 菜单/权限种子数据 (供 StpInterfaceImpl 权限鉴权使用)
+-- ============================================================
+
+-- 一级目录
+INSERT INTO `sys_menu` (`id`, `parent_id`, `menu_name`, `menu_type`, `path`, `icon`, `sort_order`) VALUES
+(100, 0, '系统管理', 'M', '/system',  'Setting',  1),
+(200, 0, '教学管理', 'M', '/education', 'Reading', 2),
+(300, 0, '校园服务', 'M', '/campus',  'School',  3),
+(400, 0, '数据统计', 'M', '/statistics', 'DataLine', 4);
+
+-- 系统管理 - 子菜单及权限按钮
+INSERT INTO `sys_menu` (`id`, `parent_id`, `menu_name`, `menu_type`, `path`, `component`, `perms`, `icon`, `sort_order`) VALUES
+(101, 100, '用户管理', 'C', 'user',  'system/user/index',  'sys:user:list',    'User',       1),
+(102, 100, '角色管理', 'C', 'role',  'system/role/index',  'sys:role:list',    'UserFilled', 2),
+(103, 100, '菜单管理', 'C', 'menu',  'system/menu/index',  'sys:menu:list',    'Menu',       3),
+(104, 100, '字典管理', 'C', 'dict',  'system/dict/index',  'sys:dict:list',    'Collection', 4),
+(105, 100, '日志管理', 'C', 'log',   'system/log/index',   'sys:log:list',     'Document',   5),
+-- 用户管理按钮权限
+(111, 101, '用户新增', 'F', NULL, NULL, 'sys:user:add',    NULL, 1),
+(112, 101, '用户修改', 'F', NULL, NULL, 'sys:user:edit',   NULL, 2),
+(113, 101, '用户删除', 'F', NULL, NULL, 'sys:user:delete', NULL, 3),
+(114, 101, '用户查询', 'F', NULL, NULL, 'sys:user:query',  NULL, 4),
+-- 角色管理按钮权限
+(121, 102, '角色新增', 'F', NULL, NULL, 'sys:role:add',    NULL, 1),
+(122, 102, '角色修改', 'F', NULL, NULL, 'sys:role:edit',   NULL, 2),
+(123, 102, '角色删除', 'F', NULL, NULL, 'sys:role:delete', NULL, 3);
+
+-- 教学管理 - 子菜单及权限按钮
+INSERT INTO `sys_menu` (`id`, `parent_id`, `menu_name`, `menu_type`, `path`, `component`, `perms`, `icon`, `sort_order`) VALUES
+(201, 200, '课程管理', 'C', 'course',      'education/course/index',      'edu:course:list',      'Notebook',  1),
+(202, 200, '课表管理', 'C', 'timetable',   'education/timetable/index',   'edu:timetable:list',   'Calendar',  2),
+(203, 200, '考勤管理', 'C', 'attendance',  'education/attendance/index',  'edu:attendance:list',  'Checked',   3),
+(204, 200, '成绩管理', 'C', 'score',       'education/score/index',       'edu:score:list',       'Trophy',    4),
+(205, 200, '请假管理', 'C', 'leave',       'education/leave/index',       'edu:leave:list',       'Timer',     5),
+(206, 200, '课程评价', 'C', 'evaluation',  'education/evaluation/index',  'edu:evaluation:list',  'Star',      6),
+-- 课程管理按钮权限
+(211, 201, '课程新增', 'F', NULL, NULL, 'edu:course:add',    NULL, 1),
+(212, 201, '课程修改', 'F', NULL, NULL, 'edu:course:edit',   NULL, 2),
+(213, 201, '课程删除', 'F', NULL, NULL, 'edu:course:delete', NULL, 3),
+-- 考勤管理按钮权限
+(231, 203, '发起签到', 'F', NULL, NULL, 'edu:attendance:create', NULL, 1),
+-- 成绩管理按钮权限
+(241, 204, '成绩录入', 'F', NULL, NULL, 'edu:score:add',  NULL, 1),
+(242, 204, '成绩修改', 'F', NULL, NULL, 'edu:score:edit', NULL, 2),
+-- 请假管理按钮权限
+(251, 205, '请假审批', 'F', NULL, NULL, 'edu:leave:audit', NULL, 1);
+
+-- 校园服务 - 子菜单及权限按钮
+INSERT INTO `sys_menu` (`id`, `parent_id`, `menu_name`, `menu_type`, `path`, `component`, `perms`, `icon`, `sort_order`) VALUES
+(301, 300, '公告通知', 'C', 'notice', 'campus/notice/index', 'svc:notice:list', 'Bell',       1),
+(302, 300, '宿舍管理', 'C', 'dorm',   'campus/dorm/index',   'svc:dorm:list',   'House',      2),
+(303, 300, '报修管理', 'C', 'repair', 'campus/repair/index', 'svc:repair:list', 'Tools',      3),
+(304, 300, '校园卡',   'C', 'card',   'campus/card/index',   'svc:card:list',   'CreditCard', 4),
+(305, 300, '图书借阅', 'C', 'book',   'campus/book/index',   'svc:book:list',   'Collection', 5),
+-- 公告管理按钮权限
+(311, 301, '公告新增', 'F', NULL, NULL, 'svc:notice:add',    NULL, 1),
+(312, 301, '公告修改', 'F', NULL, NULL, 'svc:notice:edit',   NULL, 2),
+(313, 301, '公告删除', 'F', NULL, NULL, 'svc:notice:delete', NULL, 3),
+-- 报修管理按钮权限
+(331, 303, '报修受理', 'F', NULL, NULL, 'svc:repair:handle', NULL, 1),
+-- 校园卡按钮权限
+(341, 304, '校园卡编辑', 'F', NULL, NULL, 'svc:card:edit', NULL, 1),
+(342, 304, '校园卡充值', 'F', NULL, NULL, 'svc:card:recharge', NULL, 2),
+-- 图书管理按钮权限
+(351, 305, '图书新增', 'F', NULL, NULL, 'svc:book:add',    NULL, 1),
+(352, 305, '图书修改', 'F', NULL, NULL, 'svc:book:edit',   NULL, 2),
+(353, 305, '图书删除', 'F', NULL, NULL, 'svc:book:delete', NULL, 3);
+
+-- 数据统计按钮权限
+INSERT INTO `sys_menu` (`id`, `parent_id`, `menu_name`, `menu_type`, `perms`, `sort_order`) VALUES
+(401, 400, '生成快照', 'F', 'dashboard:snapshot', 1);
+
+-- ============================================================
+-- 角色-菜单绑定 (admin 拥有全部菜单, teacher/student 按需分配)
+-- ============================================================
+
+-- 管理员：绑定全部菜单（菜单ID 100~401）
+INSERT INTO `sys_role_menu` (`role_id`, `menu_id`)
+SELECT 1, `id` FROM `sys_menu`;
+
+-- 教师：教学管理 + 考勤 + 课程评价 + 公告
+INSERT INTO `sys_role_menu` (`role_id`, `menu_id`) VALUES
+(2, 200), (2, 201), (2, 202), (2, 203), (2, 204), (2, 205), (2, 206),
+(2, 211), (2, 212), (2, 231), (2, 241), (2, 242), (2, 251),
+(2, 300), (2, 301), (2, 400);
+
+-- 学生：课表查看 + 考勤签到 + 成绩查看 + 请假 + 评价 + 公告 + 报修 + 校园卡 + 图书
+INSERT INTO `sys_role_menu` (`role_id`, `menu_id`) VALUES
+(3, 200), (3, 201), (3, 202), (3, 203), (3, 204), (3, 205), (3, 206),
+(3, 300), (3, 301), (3, 303), (3, 304), (3, 305),
+(3, 400);
+
 -- 基础字典类型
 INSERT INTO `sys_dict_type` (`dict_name`, `dict_type`, `remark`) VALUES
 ('用户性别', 'sys_user_gender',  '用户性别列表'),

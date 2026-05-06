@@ -35,6 +35,9 @@ jetcache:
 
 campus:
   upload-path: ${UPLOAD_PATH:/opt/campus-platform/uploads}
+  cors:
+    # 生产环境必须配置实际域名，禁止使用 * 通配符
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:https://campus.example.com}
 
 logging:
   file:

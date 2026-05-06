@@ -10,6 +10,8 @@ import com.campus.system.annotation.LogRecord;
 import com.campus.system.common.api.PageResult;
 import com.campus.system.common.api.Result;
 import com.campus.system.common.exception.BusinessException;
+import com.campus.system.modules.edu.dto.EduScoreAddDTO;
+import com.campus.system.modules.edu.dto.EduScoreUpdateDTO;
 import com.campus.system.modules.edu.entity.EduScore;
 import com.campus.system.modules.edu.entity.EduScoreAppeal;
 import com.campus.system.modules.edu.service.IEduScoreAppealService;
@@ -18,6 +20,7 @@ import com.campus.system.util.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -79,8 +82,27 @@ public class EduScoreController {
     @SaCheckPermission("edu:score:add")
     @LogRecord(module = "成绩管理", type = "录入")
     @Operation(summary = "录入成绩")
-    public Result<Void> add(@RequestBody EduScore score) {
-        validateScoreRange(score);
+    public Result<Void> add(@Valid @RequestBody EduScoreAddDTO dto) {
+        // 校验等级制成绩必须填写等级
+        if (dto.getScoreType() != null && dto.getScoreType() == 1) {
+            if (StrUtil.isBlank(dto.getScoreLevel())) {
+                throw new BusinessException("等级制成绩必须填写等级（如 A/B/C/D/F）");
+            }
+        }
+        // 校验百分制成绩必须填写分数
+        if (dto.getScoreType() != null && dto.getScoreType() == 0) {
+            if (dto.getScore() == null) {
+                throw new BusinessException("百分制成绩必须填写分数");
+            }
+        }
+
+        EduScore score = new EduScore();
+        score.setCourseId(dto.getCourseId());
+        score.setStudentId(dto.getStudentId());
+        score.setScoreType(dto.getScoreType());
+        score.setScore(dto.getScore());
+        score.setScoreLevel(dto.getScoreLevel());
+        score.setSemester(dto.getSemester());
         score.setTeacherId(StpUtil.getLoginIdAsLong());
         score.setStatus(0);
         scoreService.save(score);
@@ -105,8 +127,8 @@ public class EduScoreController {
     @SaCheckPermission("edu:score:edit")
     @LogRecord(module = "成绩管理", type = "修改")
     @Operation(summary = "更新成绩")
-    public Result<Void> update(@RequestBody EduScore score) {
-        EduScore existing = scoreService.getById(score.getId());
+    public Result<Void> update(@Valid @RequestBody EduScoreUpdateDTO dto) {
+        EduScore existing = scoreService.getById(dto.getId());
         if (existing == null) {
             throw new BusinessException("成绩记录不存在");
         }
@@ -114,9 +136,24 @@ public class EduScoreController {
             throw new BusinessException("该成绩已归档审核通过，禁止修改");
         }
 
-        validateScoreRange(score);
-        score.setStatus(0);
-        scoreService.updateById(score);
+        // 校验等级制成绩必须填写等级
+        if (dto.getScoreType() != null && dto.getScoreType() == 1) {
+            if (StrUtil.isBlank(dto.getScoreLevel())) {
+                throw new BusinessException("等级制成绩必须填写等级（如 A/B/C/D/F）");
+            }
+        }
+        // 校验百分制成绩必须填写分数
+        if (dto.getScoreType() != null && dto.getScoreType() == 0) {
+            if (dto.getScore() == null) {
+                throw new BusinessException("百分制成绩必须填写分数");
+            }
+        }
+
+        existing.setScoreType(dto.getScoreType());
+        existing.setScore(dto.getScore());
+        existing.setScoreLevel(dto.getScoreLevel());
+        existing.setStatus(0);
+        scoreService.updateById(existing);
         return Result.success();
     }
 
@@ -226,12 +263,4 @@ public class EduScoreController {
         return Result.success();
     }
 
-    private void validateScoreRange(EduScore score) {
-        if (score.getScore() != null && score.getScoreType() != null && score.getScoreType() == 0) {
-            double value = score.getScore().doubleValue();
-            if (value < 0 || value > 100) {
-                throw new BusinessException("百分制成绩必须在0到100分之间，当前值: " + score.getScore());
-            }
-        }
-    }
 }

@@ -22,6 +22,11 @@ jetcache:
     default:
       uri: ${JETCACHE_REDIS_URI:redis://127.0.0.1:6379/}
 
+campus:
+  cors:
+    # 开发环境允许本地前端调试地址
+    allowed-origins: http://localhost:5173,http://localhost:3000
+
 logging:
   file:
     path: ./logs
