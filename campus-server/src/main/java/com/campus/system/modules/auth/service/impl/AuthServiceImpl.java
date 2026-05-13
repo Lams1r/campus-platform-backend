@@ -13,6 +13,8 @@ import com.campus.system.modules.auth.vo.CaptchaVO;
 import com.campus.system.modules.auth.vo.LoginVO;
 import com.campus.system.modules.auth.vo.UserInfoVO;
 import com.campus.system.modules.sys.entity.SysUser;
+import com.campus.system.modules.sys.entity.SysUserRole;
+import com.campus.system.modules.sys.mapper.SysUserRoleMapper;
 import com.campus.system.modules.sys.service.ISysUserService;
 import com.campus.system.modules.sys.service.impl.AsyncLogService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -38,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 public class AuthServiceImpl implements AuthService {
 
     private final ISysUserService userService;
+    private final SysUserRoleMapper userRoleMapper;
     private final AsyncLogService asyncLogService;
     private final StringRedisTemplate redisTemplate;
 
@@ -249,6 +252,13 @@ public class AuthServiceImpl implements AuthService {
         user.setStatus(0);
         user.setLoginFailCount(0);
         userService.save(user);
+
+        // 4. 自动分配默认角色（学生→roleId=3，教师→roleId=2）
+        Long defaultRoleId = (user.getUserType() != null && user.getUserType() == 1) ? 2L : 3L;
+        SysUserRole userRole = new SysUserRole();
+        userRole.setUserId(user.getId());
+        userRole.setRoleId(defaultRoleId);
+        userRoleMapper.insert(userRole);
     }
 
     /**
