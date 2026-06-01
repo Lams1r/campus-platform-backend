@@ -16,6 +16,9 @@ CREATE TABLE `edu_course` (
   `hours`         INT           DEFAULT 0               COMMENT '学时',
   `semester`      VARCHAR(50)   DEFAULT NULL            COMMENT '学期（如 2025-2026-1）',
   `description`   VARCHAR(500)  DEFAULT NULL            COMMENT '课程简介',
+  `course_type`   VARCHAR(20)   DEFAULT NULL            COMMENT '课程类型（必修课/选修课/公共课）',
+  `regular_ratio` INT           DEFAULT 30              COMMENT '平时成绩占比(%)',
+  `exam_ratio`    INT           DEFAULT 70              COMMENT '考试成绩占比(%)',
   `status`        TINYINT       NOT NULL DEFAULT 0      COMMENT '状态 0-正常 1-已结课',
   `create_time`   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time`   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -36,7 +39,7 @@ CREATE TABLE `edu_course_teacher` (
   `update_time`   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `is_deleted`    TINYINT  NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_course_teacher` (`course_id`, `teacher_id`)
+  UNIQUE KEY `uk_course_teacher` (`course_id`, `teacher_id`, `is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程与教师关联表';
 
 -- -----------------------------------------------------------
@@ -51,7 +54,7 @@ CREATE TABLE `edu_course_class` (
   `update_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `is_deleted`    TINYINT      NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_course_class` (`course_id`, `class_name`)
+  UNIQUE KEY `uk_course_class` (`course_id`, `class_name`, `is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程与班级关联表';
 
 -- -----------------------------------------------------------
@@ -148,6 +151,7 @@ CREATE TABLE `edu_leave_request` (
   `id`              BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `student_id`      BIGINT       NOT NULL                COMMENT '申请学生ID',
   `course_id`       BIGINT       DEFAULT NULL            COMMENT '关联课程ID',
+  `teacher_id`      BIGINT       DEFAULT NULL            COMMENT '审批教师ID',
   `session_id`      BIGINT       DEFAULT NULL            COMMENT '关联考勤场次ID',
   `leave_type`      TINYINT      DEFAULT 0               COMMENT '请假类型 0-事假 1-病假 2-其他',
   `reason`          VARCHAR(500) NOT NULL                COMMENT '请假事由',
@@ -175,9 +179,13 @@ CREATE TABLE `edu_score` (
   `course_id`      BIGINT        NOT NULL                COMMENT '课程ID',
   `student_id`     BIGINT        NOT NULL                COMMENT '学生ID',
   `teacher_id`     BIGINT        NOT NULL                COMMENT '录入教师ID',
-  `score`          DECIMAL(5,2)  DEFAULT NULL            COMMENT '分数',
-  `score_type`     TINYINT       DEFAULT 0               COMMENT '评分制 0-百分制 1-等级制',
-  `score_level`    VARCHAR(10)   DEFAULT NULL            COMMENT '等级（A/B/C/D/F，等级制时使用）',
+  `regular_score`  DECIMAL(5,2)  DEFAULT NULL            COMMENT '平时成绩',
+  `exam_score`     DECIMAL(5,2)  DEFAULT NULL            COMMENT '考试成绩',
+  `total_score`    DECIMAL(5,2)  DEFAULT NULL            COMMENT '总成绩(加权)',
+  `grade_level`    VARCHAR(10)   DEFAULT NULL            COMMENT '等级(不及格/及格/优秀)',
+  `score`          DECIMAL(5,2)  DEFAULT NULL            COMMENT '分数(旧字段兼容)',
+  `score_type`     TINYINT       DEFAULT 0               COMMENT '评分制 0-百分制 1-等级制(旧字段兼容)',
+  `score_level`    VARCHAR(10)   DEFAULT NULL            COMMENT '等级(旧字段兼容)',
   `semester`       VARCHAR(50)   DEFAULT NULL            COMMENT '学期',
   `status`         TINYINT       NOT NULL DEFAULT 0      COMMENT '状态 0-待审 1-已驳回 2-已归档',
   `audit_user_id`  BIGINT        DEFAULT NULL            COMMENT '审核管理员ID',
@@ -229,3 +237,42 @@ CREATE TABLE `edu_course_evaluation` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_course_student` (`course_id`, `student_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程评价表';
+
+-- -----------------------------------------------------------
+-- 12. 学生选课表 edu_student_course
+-- -----------------------------------------------------------
+DROP TABLE IF EXISTS `edu_student_course`;
+CREATE TABLE `edu_student_course` (
+  `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `course_id`   BIGINT       NOT NULL                COMMENT '课程ID',
+  `student_id`  BIGINT       NOT NULL                COMMENT '学生用户ID',
+  `semester`    VARCHAR(50)  NOT NULL                COMMENT '学期',
+  `class_name`  VARCHAR(100) DEFAULT NULL            COMMENT '学生选择的班级',
+  `status`      TINYINT      DEFAULT 0               COMMENT '状态 0-在读 1-已退课',
+  `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `is_deleted`  TINYINT      NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_course_student` (`course_id`, `student_id`, `semester`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学生选课表';
+
+-- -----------------------------------------------------------
+-- 13. 退课申请表 edu_drop_request
+-- -----------------------------------------------------------
+DROP TABLE IF EXISTS `edu_drop_request`;
+CREATE TABLE `edu_drop_request` (
+  `id`               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `student_course_id` BIGINT      NOT NULL                COMMENT '选课记录ID',
+  `course_id`        BIGINT       NOT NULL                COMMENT '课程ID',
+  `student_id`       BIGINT       NOT NULL                COMMENT '学生用户ID',
+  `teacher_id`       BIGINT       DEFAULT NULL            COMMENT '审批教师ID',
+  `class_name`       VARCHAR(100) DEFAULT NULL            COMMENT '班级',
+  `reason`           VARCHAR(500) DEFAULT NULL            COMMENT '退课原因',
+  `status`           TINYINT      DEFAULT 0               COMMENT '状态 0-待审批 1-已通过 2-已驳回',
+  `approve_time`     DATETIME     DEFAULT NULL            COMMENT '审批时间',
+  `approve_remark`   VARCHAR(500) DEFAULT NULL            COMMENT '审批意见',
+  `create_time`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `is_deleted`       TINYINT      NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='退课申请表';

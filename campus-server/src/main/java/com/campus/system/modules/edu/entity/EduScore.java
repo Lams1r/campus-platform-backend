@@ -27,14 +27,17 @@ public class EduScore extends BaseEntity {
     @Schema(description = "录入教师ID")
     private Long teacherId;
 
-    @Schema(description = "成绩分数")
-    private BigDecimal score;
+    @Schema(description = "平时成绩")
+    private BigDecimal regularScore;
 
-    @Schema(description = "成绩类型，0-百分制，1-等级制")
-    private Integer scoreType;
+    @Schema(description = "考试成绩")
+    private BigDecimal examScore;
 
-    @Schema(description = "等级成绩，如 A/B/C/D/F")
-    private String scoreLevel;
+    @Schema(description = "总成绩(加权)")
+    private BigDecimal totalScore;
+
+    @Schema(description = "等级(不及格/及格/优秀)")
+    private String gradeLevel;
 
     @Schema(description = "学期")
     private String semester;

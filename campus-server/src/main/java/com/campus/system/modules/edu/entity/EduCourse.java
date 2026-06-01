@@ -41,6 +41,18 @@ public class EduCourse extends BaseEntity {
     @Schema(description = "课程简介")
     private String description;
 
+    /** 课程类型（必修课/选修课/公共课） */
+    @Schema(description = "课程类型")
+    private String courseType;
+
+    /** 平时成绩占比(%) */
+    @Schema(description = "平时成绩占比(%)")
+    private Integer regularRatio;
+
+    /** 考试成绩占比(%) */
+    @Schema(description = "考试成绩占比(%)")
+    private Integer examRatio;
+
     /** 状态 0-正常 1-已结课 */
     @Schema(description = "课程状态")
     private Integer status;

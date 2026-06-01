@@ -2,12 +2,15 @@ package com.campus.system.modules.sys.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.campus.system.annotation.LogRecord;
 import com.campus.system.common.api.PageResult;
 import com.campus.system.common.api.Result;
 import com.campus.system.modules.sys.dto.SysUserCreateDTO;
 import com.campus.system.modules.sys.dto.SysUserQueryDTO;
 import com.campus.system.modules.sys.dto.SysUserUpdateDTO;
+import com.campus.system.modules.sys.entity.SysUser;
 import com.campus.system.modules.sys.service.ISysUserService;
 import com.campus.system.modules.sys.vo.SysUserVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +30,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 用户管理控制器。
@@ -115,5 +121,27 @@ public class SysUserController {
     @Operation(summary = "导出用户", description = "按查询条件导出用户数据为 Excel")
     public void exportUsers(@ParameterObject SysUserQueryDTO query, HttpServletResponse response) {
         userService.exportUsers(query, response);
+    }
+
+    @GetMapping("/teachers")
+    @Operation(summary = "获取教师列表", description = "查询所有教师用户，支持按姓名模糊搜索，用于课程关联选择")
+    public Result<List<SysUserVO>> getTeachers(
+            @Parameter(description = "姓名关键字") @RequestParam(required = false) String keyword) {
+
+        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysUser::getUserType, 1).eq(SysUser::getStatus, 0);
+        if (StrUtil.isNotBlank(keyword)) {
+            wrapper.and(w -> w.like(SysUser::getRealName, keyword).or().like(SysUser::getUsername, keyword));
+        }
+        wrapper.orderByAsc(SysUser::getId);
+
+        List<SysUser> teachers = userService.list(wrapper);
+        List<SysUserVO> voList = teachers.stream().map(u -> {
+            SysUserVO vo = new SysUserVO();
+            org.springframework.beans.BeanUtils.copyProperties(u, vo);
+            return vo;
+        }).collect(Collectors.toList());
+
+        return Result.success(voList);
     }
 }

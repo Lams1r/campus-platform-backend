@@ -244,13 +244,21 @@ INSERT INTO `sys_menu` (`id`, `parent_id`, `menu_name`, `menu_type`, `path`, `co
 (211, 201, '课程新增', 'F', NULL, NULL, 'edu:course:add',    NULL, 1),
 (212, 201, '课程修改', 'F', NULL, NULL, 'edu:course:edit',   NULL, 2),
 (213, 201, '课程删除', 'F', NULL, NULL, 'edu:course:delete', NULL, 3),
+(214, 201, '课程查询', 'F', NULL, NULL, 'edu:course:query',  NULL, 4),
+-- 课表管理按钮权限
+(221, 202, '课表新增', 'F', NULL, NULL, 'edu:timetable:add',    NULL, 1),
+(222, 202, '课表修改', 'F', NULL, NULL, 'edu:timetable:edit',   NULL, 2),
+(223, 202, '课表删除', 'F', NULL, NULL, 'edu:timetable:delete', NULL, 3),
 -- 考勤管理按钮权限
 (231, 203, '发起签到', 'F', NULL, NULL, 'edu:attendance:create', NULL, 1),
 -- 成绩管理按钮权限
 (241, 204, '成绩录入', 'F', NULL, NULL, 'edu:score:add',  NULL, 1),
 (242, 204, '成绩修改', 'F', NULL, NULL, 'edu:score:edit', NULL, 2),
 -- 请假管理按钮权限
-(251, 205, '请假审批', 'F', NULL, NULL, 'edu:leave:audit', NULL, 1);
+(251, 205, '请假审批', 'F', NULL, NULL, 'edu:leave:approve', NULL, 1),
+-- 课程评价/资料按钮权限
+(261, 206, '上传资料', 'F', NULL, NULL, 'edu:material:upload', NULL, 1),
+(262, 206, '删除资料', 'F', NULL, NULL, 'edu:material:delete', NULL, 2);
 
 -- 校园服务 - 子菜单及权限按钮
 INSERT INTO `sys_menu` (`id`, `parent_id`, `menu_name`, `menu_type`, `path`, `component`, `perms`, `icon`, `sort_order`) VALUES
@@ -263,6 +271,10 @@ INSERT INTO `sys_menu` (`id`, `parent_id`, `menu_name`, `menu_type`, `path`, `co
 (311, 301, '公告新增', 'F', NULL, NULL, 'svc:notice:add',    NULL, 1),
 (312, 301, '公告修改', 'F', NULL, NULL, 'svc:notice:edit',   NULL, 2),
 (313, 301, '公告删除', 'F', NULL, NULL, 'svc:notice:delete', NULL, 3),
+-- 宿舍管理按钮权限
+(306, 302, '宿舍新增', 'F', NULL, NULL, 'svc:dorm:add',    NULL, 1),
+(307, 302, '宿舍编辑', 'F', NULL, NULL, 'svc:dorm:edit',   NULL, 2),
+(308, 302, '宿舍删除', 'F', NULL, NULL, 'svc:dorm:delete', NULL, 3),
 -- 报修管理按钮权限
 (331, 303, '报修受理', 'F', NULL, NULL, 'svc:repair:handle', NULL, 1),
 -- 校园卡按钮权限
@@ -285,15 +297,17 @@ INSERT INTO `sys_menu` (`id`, `parent_id`, `menu_name`, `menu_type`, `perms`, `s
 INSERT INTO `sys_role_menu` (`role_id`, `menu_id`)
 SELECT 1, `id` FROM `sys_menu`;
 
--- 教师：教学管理 + 考勤 + 课程评价 + 公告
-INSERT INTO `sys_role_menu` (`role_id`, `menu_id`) VALUES
-(2, 200), (2, 201), (2, 202), (2, 203), (2, 204), (2, 205), (2, 206),
-(2, 211), (2, 212), (2, 231), (2, 241), (2, 242), (2, 251),
-(2, 300), (2, 301), (2, 400);
+-- 教师：教学管理全部 + 校园服务全部 + 数据统计（排除系统管理的用户/角色/菜单/字典/日志）
+INSERT INTO `sys_role_menu` (`role_id`, `menu_id`)
+SELECT 2, `id` FROM `sys_menu` WHERE `id` NOT IN (
+  100, 101, 102, 103, 104, 105,           -- 系统管理菜单
+  111, 112, 113, 114,                      -- 用户管理按钮
+  121, 122, 123                            -- 角色管理按钮
+);
 
--- 学生：课表查看 + 考勤签到 + 成绩查看 + 请假 + 评价 + 公告 + 报修 + 校园卡 + 图书
+-- 学生：教学查看 + 考勤签到 + 成绩查看 + 请假 + 评价 + 公告查看 + 报修 + 校园卡 + 图书查看
 INSERT INTO `sys_role_menu` (`role_id`, `menu_id`) VALUES
-(3, 200), (3, 201), (3, 202), (3, 203), (3, 204), (3, 205), (3, 206),
+(3, 200), (3, 201), (3, 202), (3, 203), (3, 204), (3, 205), (3, 206), (3, 214),
 (3, 300), (3, 301), (3, 303), (3, 304), (3, 305),
 (3, 400);
 

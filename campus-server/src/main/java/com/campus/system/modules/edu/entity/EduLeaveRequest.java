@@ -23,6 +23,9 @@ public class EduLeaveRequest extends BaseEntity {
     @Schema(description = "关联课程ID")
     private Long courseId;
 
+    @Schema(description = "审批教师ID")
+    private Long teacherId;
+
     @Schema(description = "关联考勤场次ID")
     private Long sessionId;
 

@@ -93,7 +93,7 @@ public class CampusBookController {
 
     @GetMapping("/borrow/my")
     @Operation(summary = "查询我的借阅记录")
-    public Result<PageResult<CampusBookBorrow>> myBorrows(
+    public Result<PageResult<BorrowVO>> myBorrows(
             @Parameter(description = "当前页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页条数") @RequestParam(defaultValue = "10") Integer pageSize) {
         Long studentId = SecurityUtils.getCurrentUserId();
@@ -102,7 +102,27 @@ public class CampusBookController {
                         .eq(CampusBookBorrow::getStudentId, studentId)
                         .orderByDesc(CampusBookBorrow::getId)
         );
-        return Result.success(new PageResult<>(page.getTotal(), page.getRecords(), (long) pageNum, (long) pageSize));
+
+        java.util.List<BorrowVO> voList = page.getRecords().stream().map(b -> {
+            BorrowVO vo = new BorrowVO();
+            vo.setId(b.getId());
+            vo.setBookId(b.getBookId());
+            vo.setStudentId(b.getStudentId());
+            vo.setBorrowTime(b.getBorrowTime());
+            vo.setDueTime(b.getDueTime());
+            vo.setReturnTime(b.getReturnTime());
+            vo.setStatus(b.getStatus());
+            vo.setCreateTime(b.getCreateTime());
+            CampusBook book = bookService.getById(b.getBookId());
+            if (book != null) {
+                vo.setBookName(book.getBookName());
+                vo.setAuthor(book.getAuthor());
+                vo.setIsbn(book.getIsbn());
+            }
+            return vo;
+        }).collect(java.util.stream.Collectors.toList());
+
+        return Result.success(new PageResult<>(page.getTotal(), voList, (long) pageNum, (long) pageSize));
     }
 
     @GetMapping("/borrow/page")
@@ -117,5 +137,20 @@ public class CampusBookController {
         wrapper.orderByDesc(CampusBookBorrow::getId);
         Page<CampusBookBorrow> page = borrowService.page(new Page<>(pageNum, pageSize), wrapper);
         return Result.success(new PageResult<>(page.getTotal(), page.getRecords(), (long) pageNum, (long) pageSize));
+    }
+
+    @lombok.Data
+    public static class BorrowVO {
+        private Long id;
+        private Long bookId;
+        private String bookName;
+        private String author;
+        private String isbn;
+        private Long studentId;
+        private java.time.LocalDateTime borrowTime;
+        private java.time.LocalDateTime dueTime;
+        private java.time.LocalDateTime returnTime;
+        private Integer status;
+        private java.time.LocalDateTime createTime;
     }
 }

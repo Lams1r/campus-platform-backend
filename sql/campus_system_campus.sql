@@ -95,7 +95,7 @@ CREATE TABLE `campus_dormitory_allocation` (
   `update_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `is_deleted`    TINYINT      NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_room_student` (`room_id`, `student_id`)
+  UNIQUE KEY `uk_room_student` (`room_id`, `student_id`, `is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='宿舍分配入住表';
 
 -- -----------------------------------------------------------

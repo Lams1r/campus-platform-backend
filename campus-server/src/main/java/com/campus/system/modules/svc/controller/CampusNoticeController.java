@@ -52,66 +52,45 @@ public class CampusNoticeController {
 
     @GetMapping("/page")
     @Operation(summary = "分页查询公告")
-    public Result<PageResult<CampusNotice>> page(
+    public Result<PageResult<NoticeVO>> page(
             @Parameter(description = "当前页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页条数") @RequestParam(defaultValue = "10") Integer pageSize,
-            @Parameter(description = "关键字") @RequestParam(required = false) String keyword,
-            @Parameter(description = "公告类型") @RequestParam(required = false) Integer noticeType) {
+            @Parameter(description = "关键字") @RequestParam(required = false) String keyword) {
 
         LambdaQueryWrapper<CampusNotice> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CampusNotice::getStatus, 1);
+        if (!SecurityUtils.hasRole("admin")) {
+            wrapper.eq(CampusNotice::getStatus, 1);
+        }
         if (StrUtil.isNotBlank(keyword)) {
             wrapper.like(CampusNotice::getTitle, keyword);
-        }
-        if (noticeType != null) {
-            wrapper.eq(CampusNotice::getNoticeType, noticeType);
-        }
-        if (!SecurityUtils.hasRole("admin")) {
-            List<String> roleKeys = resolveCurrentRoleKeys();
-            String className = getCurrentClassName();
-            wrapper.and(w -> {
-                w.eq(CampusNotice::getNoticeType, 0);
-                if (!roleKeys.isEmpty()) {
-                    w.or(q -> q.eq(CampusNotice::getNoticeType, 1).in(CampusNotice::getTargetRole, roleKeys));
-                }
-                if (StrUtil.isNotBlank(className)) {
-                    w.or(q -> q.eq(CampusNotice::getNoticeType, 2).eq(CampusNotice::getTargetClass, className));
-                }
-            });
         }
         wrapper.orderByDesc(CampusNotice::getPublishTime);
 
         Page<CampusNotice> page = noticeService.page(new Page<>(pageNum, pageSize), wrapper);
-        List<CampusNotice> visibleRecords = page.getRecords().stream()
-                .filter(this::canCurrentUserView)
-                .collect(Collectors.toList());
-        return Result.success(new PageResult<>(page.getTotal(), visibleRecords, (long) pageNum, (long) pageSize));
+
+        List<NoticeVO> voList = page.getRecords().stream().map(notice -> {
+            NoticeVO vo = new NoticeVO();
+            vo.setId(notice.getId());
+            vo.setTitle(notice.getTitle());
+            vo.setContent(notice.getContent());
+            vo.setStatus(notice.getStatus());
+            vo.setPublishTime(notice.getPublishTime());
+            vo.setCreateTime(notice.getCreateTime());
+            if (userService != null && notice.getPublishUserId() != null) {
+                SysUser publisher = userService.getById(notice.getPublishUserId());
+                vo.setPublisherName(publisher != null ? publisher.getRealName() : "");
+            }
+            return vo;
+        }).collect(Collectors.toList());
+
+        return Result.success(new PageResult<>(page.getTotal(), voList, (long) pageNum, (long) pageSize));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "获取公告详情")
     public Result<CampusNotice> detail(@Parameter(description = "公告ID") @PathVariable Long id) {
         CampusNotice notice = noticeService.getById(id);
-        if (notice == null || !canCurrentUserView(notice)) {
-            throw new BusinessException("公告不存在或无权查看");
-        }
-
-        try {
-            Long userId = SecurityUtils.getCurrentUserId();
-            long readCount = noticeReadService.count(
-                    new LambdaQueryWrapper<CampusNoticeRead>()
-                            .eq(CampusNoticeRead::getNoticeId, id)
-                            .eq(CampusNoticeRead::getUserId, userId)
-            );
-            if (readCount == 0) {
-                CampusNoticeRead read = new CampusNoticeRead();
-                read.setNoticeId(id);
-                read.setUserId(userId);
-                noticeReadService.save(read);
-            }
-        } catch (Exception ignored) {
-        }
-
+        if (notice == null) throw new BusinessException("公告不存在");
         return Result.success(notice);
     }
 
@@ -121,7 +100,8 @@ public class CampusNoticeController {
     @Operation(summary = "新增公告")
     public Result<Void> add(@RequestBody CampusNotice notice) {
         notice.setPublishUserId(SecurityUtils.getCurrentUserId());
-        notice.setStatus(0);
+        if (notice.getStatus() == null) notice.setStatus(0);
+        if (notice.getStatus() == 1) notice.setPublishTime(LocalDateTime.now());
         noticeService.save(notice);
         return Result.success();
     }
@@ -145,6 +125,13 @@ public class CampusNoticeController {
     @SaCheckPermission("svc:notice:edit")
     @Operation(summary = "更新公告")
     public Result<Void> update(@RequestBody CampusNotice notice) {
+        // 如果状态改为发布，自动设置发布时间
+        if (notice.getStatus() != null && notice.getStatus() == 1) {
+            CampusNotice existing = noticeService.getById(notice.getId());
+            if (existing != null && (existing.getStatus() == null || existing.getStatus() == 0)) {
+                notice.setPublishTime(LocalDateTime.now());
+            }
+        }
         noticeService.updateById(notice);
         return Result.success();
     }
@@ -202,5 +189,16 @@ public class CampusNoticeController {
         }
         SysUser user = userService.getById(SecurityUtils.getCurrentUserId());
         return user == null ? null : user.getClassName();
+    }
+
+    @lombok.Data
+    public static class NoticeVO {
+        private Long id;
+        private String title;
+        private String content;
+        private Integer status;
+        private String publisherName;
+        private java.time.LocalDateTime publishTime;
+        private java.time.LocalDateTime createTime;
     }
 }

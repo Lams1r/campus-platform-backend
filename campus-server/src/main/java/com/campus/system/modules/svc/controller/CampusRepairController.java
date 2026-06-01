@@ -84,10 +84,6 @@ public class CampusRepairController {
             order.setUrgencyLevel(0);
         }
 
-        if (order.getImagePaths() == null || order.getImagePaths().trim().isEmpty()) {
-            throw new BusinessException("请上传损坏区域照片作为报修凭证");
-        }
-
         if (order.getRoomId() != null) {
             long pendingCount = repairService.count(
                     new LambdaQueryWrapper<CampusRepairOrder>()
