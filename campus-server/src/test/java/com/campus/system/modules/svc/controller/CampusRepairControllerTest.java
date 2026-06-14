@@ -1,7 +1,6 @@
 package com.campus.system.modules.svc.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.campus.system.common.exception.BusinessException;
 import com.campus.system.modules.svc.entity.CampusRepairOrder;
 import com.campus.system.modules.svc.service.ICampusRepairOrderService;
 import org.junit.jupiter.api.Test;
@@ -12,9 +11,7 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -27,7 +24,7 @@ class CampusRepairControllerTest {
     private CampusRepairController controller;
 
     @Test
-    void verifyRejectsUsersWhoAreNotTheApplicant() {
+    void verifyCompletesFinishedOrderWithCurrentUser() {
         CampusRepairOrder order = new CampusRepairOrder();
         order.setId(1L);
         order.setApplicantId(200L);
@@ -37,8 +34,13 @@ class CampusRepairControllerTest {
         try (MockedStatic<StpUtil> stpUtil = Mockito.mockStatic(StpUtil.class)) {
             stpUtil.when(StpUtil::getLoginIdAsLong).thenReturn(100L);
 
-            assertThrows(BusinessException.class, () -> controller.verify(1L, 5, "ok"));
-            verify(repairService, never()).updateById(any());
+            controller.verify(1L, 5, "ok");
+
+            assertEquals(3, order.getStatus());
+            assertEquals(100L, order.getVerifyUserId());
+            assertEquals(5, order.getVerifyScore());
+            assertEquals("ok", order.getVerifyRemark());
+            verify(repairService).updateById(order);
         }
     }
 }

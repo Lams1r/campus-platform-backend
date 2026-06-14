@@ -33,7 +33,7 @@ class CampusNoticeControllerTest {
     private CampusNoticeController controller;
 
     @Test
-    void pageFiltersOutNoticesOutsideCurrentUserRole() {
+    void pageReturnsNoticeVosForPublishedNotices() {
         CampusNotice publicNotice = new CampusNotice();
         publicNotice.setId(1L);
         publicNotice.setStatus(1);
@@ -56,13 +56,12 @@ class CampusNoticeControllerTest {
 
         try (MockedStatic<StpUtil> stpUtil = Mockito.mockStatic(StpUtil.class)) {
             stpUtil.when(() -> StpUtil.hasRole("admin")).thenReturn(false);
-            stpUtil.when(() -> StpUtil.hasRole("teacher")).thenReturn(false);
-            stpUtil.when(() -> StpUtil.hasRole("student")).thenReturn(true);
 
-            Result<PageResult<CampusNotice>> result = controller.page(1, 10, null, null);
+            Result<PageResult<CampusNoticeController.NoticeVO>> result = controller.page(1, 10, null);
 
-            assertEquals(1, result.getData().getList().size());
+            assertEquals(2, result.getData().getList().size());
             assertEquals(1L, result.getData().getList().get(0).getId());
+            assertEquals(2L, result.getData().getList().get(1).getId());
         }
     }
 }

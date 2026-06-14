@@ -10,9 +10,11 @@ import com.campus.system.modules.edu.service.IEduAttendanceSessionService;
 import com.campus.system.modules.edu.service.IEduCourseEvaluationService;
 import com.campus.system.modules.edu.service.IEduCourseMaterialService;
 import com.campus.system.modules.edu.service.IEduCourseService;
+import com.campus.system.modules.edu.service.IEduDropRequestService;
 import com.campus.system.modules.edu.service.IEduLeaveRequestService;
 import com.campus.system.modules.edu.service.IEduScoreAppealService;
 import com.campus.system.modules.edu.service.IEduScoreService;
+import com.campus.system.modules.edu.service.IEduStudentCourseService;
 import com.campus.system.modules.edu.service.IEduTimetableService;
 import com.campus.system.modules.svc.controller.DashboardController;
 import com.campus.system.modules.svc.service.ICampusBookBorrowService;
@@ -23,6 +25,7 @@ import com.campus.system.modules.svc.service.ICampusDashboardSnapshotService;
 import com.campus.system.modules.svc.service.ICampusDormitoryAllocationService;
 import com.campus.system.modules.svc.service.ICampusDormitoryBuildingService;
 import com.campus.system.modules.svc.service.ICampusDormitoryRoomService;
+import com.campus.system.modules.svc.service.ICampusDormSwapRequestService;
 import com.campus.system.modules.svc.service.ICampusNoticeReadService;
 import com.campus.system.modules.svc.service.ICampusNoticeService;
 import com.campus.system.modules.svc.service.ICampusRepairOrderService;
@@ -31,6 +34,7 @@ import com.campus.system.modules.sys.service.ISysDictDataService;
 import com.campus.system.modules.sys.service.ISysDictTypeService;
 import com.campus.system.modules.sys.service.ISysLoginLogService;
 import com.campus.system.modules.sys.service.ISysMenuService;
+import com.campus.system.modules.sys.service.ISysMessageService;
 import com.campus.system.modules.sys.service.ISysOperateLogService;
 import com.campus.system.modules.sys.service.ISysRoleService;
 import com.campus.system.modules.sys.service.ISysUserService;
@@ -76,6 +80,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         ISysRoleService.class,
         ISysOperateLogService.class,
         ISysMenuService.class,
+        ISysMessageService.class,
         ISysLoginLogService.class,
         ISysDictTypeService.class,
         ISysDictDataService.class,
@@ -83,6 +88,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         IEduScoreService.class,
         IEduScoreAppealService.class,
         IEduLeaveRequestService.class,
+        IEduStudentCourseService.class,
+        IEduDropRequestService.class,
         IEduCourseService.class,
         IEduCourseMaterialService.class,
         IEduCourseEvaluationService.class,
@@ -94,6 +101,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         ICampusDormitoryRoomService.class,
         ICampusDormitoryBuildingService.class,
         ICampusDormitoryAllocationService.class,
+        ICampusDormSwapRequestService.class,
         ICampusDashboardSnapshotService.class,
         ICampusCardRecordService.class,
         ICampusCardLossService.class,
