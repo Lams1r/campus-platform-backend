@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- 书本基座 -->
+  <path d="M6 36C6 34.8954 6.89543 34 8 34H40C41.1046 34 42 34.8954 42 36V38C42 39.1046 41.1046 40 40 40H8C6.89543 40 6 39.1046 6 38V36Z" fill="#ffffff"/>
+  <!-- 书页左侧 -->
+  <path d="M24 34V14C24 14 24 10 20 8C16 6 8 6 8 6V34H24Z" fill="#ffffff" opacity="0.85"/>
+  <!-- 书页右侧 -->
+  <path d="M24 34V14C24 14 24 10 28 8C32 6 40 6 40 6V34H24Z" fill="#ffffff" opacity="0.65"/>
+  <!-- 学位帽 -->
+  <path d="M24 4L4 14L24 22L44 14L24 4Z" fill="#ffffff"/>
+  <!-- 帽穗 -->
+  <path d="M38 14V20" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="38" cy="22" r="2" fill="#ffffff"/>
+</svg>

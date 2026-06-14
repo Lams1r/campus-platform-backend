@@ -1,0 +1,45 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-frontend
+  cancel-in-progress: true
+
+jobs:
+  trigger-server-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' '${{ secrets.FRONTEND_SSH_KEY }}' > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.FRONTEND_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Pull & Build on server
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.FRONTEND_USER }}@${{ secrets.FRONTEND_HOST }} \
+            'bash -s' << 'REMOTE'
+            set -e
+            cd /opt/campus-frontend/repo
+            echo "==> git pull"
+            git pull --ff-only origin main
+
+            echo "==> npm ci"
+            npm ci --no-audit --no-fund
+
+            echo "==> npm run build"
+            npm run build
+
+            echo "==> verify dist"
+            test -f dist/index.html
+            ls -la dist | head
+
+            echo "Deploy success"
+          REMOTE
