@@ -1,0 +1,7 @@
+.venv/
+.env
+reports/
+captcha-*.png
+__pycache__/
+.pytest_cache/
+*.pyc

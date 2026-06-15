@@ -1,0 +1,32 @@
+campus-tests-20260615-ai-env-and-report-cleanup
+
+This build fixes:
+- independent test pages run independent test files
+- smoke_matrix decorators remain one decorator per line
+- each report directory has its own latest-progress.json
+- ISO date-time checks run only in STRICT_MODE
+- Swagger/OpenAPI exposure is strict-mode-only
+- latency budgets are strict-mode-only for public network demos
+- Xiaomi MiMo AI summary integration via MIMO_API_KEY
+- latest-summary.html for every test profile
+- redesigned responsive runner and report pages
+- simplified customer-facing runner interactions
+- removed duplicated side panels and default log noise
+- fixed runner elapsed time freeze after completion
+- configured Xiaomi MiMo AI in deployment .env
+- AI summary now cites test data basis and failed cases
+- removed duplicated summary entry and marker override path
+- cleaned customer-facing runner navigation
+- validates login tokens before authenticated tests
+- converts auth-required public endpoints to skipped environment items
+- prevents one invalid token from producing dozens of failures
+- supports relative/absolute frontend asset references
+- skips asset content check when deployment injects no local JS/CSS references
+- fixes Xiaomi MiMo default endpoint typo
+- uses supported MiMo model mimo-v2.5-pro
+- disables inherited system proxy for AI summary requests
+- limits AI summary output tokens to avoid incomplete report generation
+- loads .env directly inside AI summary generation
+- syncs web runner .env values into the runner process environment
+- treats controlled teacher timetable backend busy responses as skipped environment issues
+- treats intermittent frontend asset read timeouts as skipped network issues

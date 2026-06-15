@@ -1,0 +1,14 @@
+[Unit]
+Description=Campus Platform One-click Test Runner
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/campus-platform-tests
+ExecStart=/bin/bash /opt/campus-platform-tests/scripts/start_web_runner.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
