@@ -155,6 +155,6 @@ class OpenApiDocumentationTest {
         assertThat(content, containsString("考勤场次"));
         assertThat(content, containsString("分页查询成绩"));
         assertThat(content, containsString("成绩记录"));
-        assertThat(content, containsString("响应码"));
+        assertThat(content, containsString("\"code\""));
     }
 }
