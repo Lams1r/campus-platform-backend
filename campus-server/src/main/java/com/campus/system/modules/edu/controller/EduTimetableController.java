@@ -75,13 +75,15 @@ public class EduTimetableController {
 
     @GetMapping("/my")
     @Operation(summary = "查询我的课表")
-    public Result<List<TimetableVO>> myTimetable(@Parameter(description = "学期") @RequestParam String semester) {
+    public Result<List<TimetableVO>> myTimetable(@Parameter(description = "学期") @RequestParam(required = false) String semester) {
+        if (StrUtil.isBlank(semester)) {
+            return Result.error(400, "学期不能为空");
+        }
         Long userId = StpUtil.getLoginIdAsLong();
         boolean isStudent = StpUtil.hasRole("student");
 
         List<EduTimetable> list;
         if (isStudent) {
-            // 学生：查已选课程的课表（用选课时记录的 className）
             List<EduStudentCourse> selections = studentCourseService.list(
                     new LambdaQueryWrapper<EduStudentCourse>()
                             .eq(EduStudentCourse::getStudentId, userId)
@@ -105,7 +107,6 @@ public class EduTimetableController {
                 list.addAll(ttList);
             }
         } else {
-            // 教师：查自己课程的课表
             list = timetableService.list(
                     new LambdaQueryWrapper<EduTimetable>()
                             .eq(EduTimetable::getTeacherId, userId)
@@ -138,7 +139,6 @@ public class EduTimetableController {
     @SaCheckPermission("edu:timetable:add")
     @Operation(summary = "新增排课")
     public Result<Void> add(@RequestBody EduTimetable timetable) {
-        // 校验重复：同一课程+班级+学期只能排课一次
         long exists = timetableService.count(
                 new LambdaQueryWrapper<EduTimetable>()
                         .eq(EduTimetable::getCourseId, timetable.getCourseId())
@@ -149,7 +149,6 @@ public class EduTimetableController {
             throw new BusinessException("该课程的该班级在本学期已排课，不能重复排课");
         }
 
-        // 校验冲突：同一班级+学期+星期+节次范围不能重复
         long classConflict = timetableService.count(
                 new LambdaQueryWrapper<EduTimetable>()
                         .eq(EduTimetable::getClassName, timetable.getClassName())
@@ -162,12 +161,10 @@ public class EduTimetableController {
             throw new BusinessException("该班级在该时间段已有其他课程安排");
         }
 
-        // 自动填充教师ID
         if (timetable.getTeacherId() == null) {
             timetable.setTeacherId(StpUtil.getLoginIdAsLong());
         }
 
-        // 校验冲突：同一教师+学期+星期+节次范围不能重复
         long teacherConflict = timetableService.count(
                 new LambdaQueryWrapper<EduTimetable>()
                         .eq(EduTimetable::getTeacherId, timetable.getTeacherId())
